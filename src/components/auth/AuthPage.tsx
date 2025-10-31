@@ -57,27 +57,31 @@ const AuthPage: React.FC = () => {
         email: formData.email,
         password: formData.password,
         username: formData.username,
+        confirmPassword: formData.confirmPassword,
+        phone_number: formData.phone || undefined,
       });
 
       console.log('REGISTER RESULT:', result);
 
       if (!result.success) {
-        if (result.error && result.error.toLowerCase().includes('confirm')) {
-          setError('Please confirm your email to complete registration.');
-        } else {
-          setError(result.error || t('registrationFailed'));
-        }
+         setError(result.error || t('registrationFailed'));
+        return;
       }
     } else {
       const result = await login({
         email: formData.email,
         password: formData.password,
+        phone: formData.phone || undefined,
+        remember_me: false,
       });
 
       console.log('LOGIN RESULT:', result);
 
       if (!result.success) {
         setError(result.error || t('loginFailed'));
+      } else {
+        // اگر خواستید فوراً ریدایرکت انجام شود می‌توانید setCurrentView هم اینجا صدا بزنید.
+        setCurrentView('dashboard');
       }
     }
   };
