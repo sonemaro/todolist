@@ -30,6 +30,7 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   rememberMe: false,
 
   
+// snippet: replace the init implementation in authStore with this version
 init: async () => {
   try {
     set({ isLoading: true });
@@ -38,7 +39,7 @@ init: async () => {
     const { data } = await supabase.auth.getSession();
     const session = data.session as any;
 
-    // set session initially but *don't* mark authenticated until we confirm profile
+    // set session initially but don't mark authenticated until we confirm profile
     set({
       session: session || null,
       isAuthenticated: false,
@@ -46,7 +47,6 @@ init: async () => {
 
     if (session?.user?.id) {
       try {
-        // Try to load profile directly from the service (we already have authService)
         const profile = await authService.getUserProfile(session.user.id);
 
         if (profile) {
