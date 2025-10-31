@@ -142,7 +142,7 @@ const AuthPage: React.FC = () => {
           </div>
 
           <AnimatePresence mode="wait">
-            <form onSubmit={handleSubmit}>
+            
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
