@@ -29,35 +29,71 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isAuthenticated: false,
   rememberMe: false,
 
-  init: async () => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      set({
-        session: data.session as any,
-        isAuthenticated: !!data.session,
-        isLoading: false,
-      });
+  
+init: async () => {
+  try {
+    set({ isLoading: true });
 
-      if (data.session?.user?.id) {
-        await get().loadProfile();
-      }
+    // get current session from Supabase
+    const { data } = await supabase.auth.getSession();
+    const session = data.session as any;
 
-      supabase.auth.onAuthStateChange((_event, session) => {
-        set({
-          session: session as any,
-          isAuthenticated: !!session,
-        });
-        if (session?.user?.id) {
-          get().loadProfile();
+    // set session initially but *don't* mark authenticated until we confirm profile
+    set({
+      session: session || null,
+      isAuthenticated: false,
+    });
+
+    if (session?.user?.id) {
+      try {
+        // Try to load profile directly from the service (we already have authService)
+        const profile = await authService.getUserProfile(session.user.id);
+
+        if (profile) {
+          set({
+            profile,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         } else {
-          set({ profile: null });
+          // no profile found -> keep not authenticated
+          set({
+            profile: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
         }
-      });
-    } catch (error) {
-      console.error('[authStore] init error:', error);
-      set({ isLoading: false });
+      } catch (err) {
+        console.error('[authStore] loadProfile error during init:', err);
+        set({ isLoading: false, profile: null, isAuthenticated: false });
+      }
+    } else {
+      // no session
+      set({ session: null, profile: null, isAuthenticated: false, isLoading: false });
     }
-  },
+
+    // subscribe to auth state changes
+    supabase.auth.onAuthStateChange(async (_event, newSession) => {
+      set({
+        session: newSession as any,
+      });
+
+      if (newSession?.user?.id) {
+        const profile = await authService.getUserProfile(newSession.user.id);
+        if (profile) {
+          set({ profile, isAuthenticated: true });
+        } else {
+          set({ profile: null, isAuthenticated: false });
+        }
+      } else {
+        set({ profile: null, isAuthenticated: false });
+      }
+    });
+  } catch (error) {
+    console.error('[authStore] init error:', error);
+    set({ isLoading: false, isAuthenticated: false });
+  }
+},
 
       register: async (credentials) => {
         set({ isLoading: true });
