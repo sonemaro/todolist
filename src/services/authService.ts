@@ -21,9 +21,10 @@ export const authService = {
       });
 
       if (validationErrors.length > 0) {
+        const msg = validationErrors.map(e => `${e.field}: ${e.message}`).join('; ');
         return {
           success: false,
-          error: 'Validation failed',
+          error: msg,
         };
       }
 
