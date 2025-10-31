@@ -16,8 +16,16 @@ const AuthPage: React.FC = () => {
     password: '',
     username: '',
     confirmPassword: '',
+    phone: '',
   });
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // وقتی authentication برقرار شد، به داشبورد هدایت کن
+    if (isAuthenticated) {
+      setCurrentView('dashboard'); // اگر نام ویوی اصلی در اپ شما فرق دارد، آن را قرار دهید
+    }
+  }, [isAuthenticated, setCurrentView]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
