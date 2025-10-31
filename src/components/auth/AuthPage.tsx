@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, Eye, EyeOff, Loader } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -21,7 +21,7 @@ const AuthPage: React.FC = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // وقتی authentication برقرار شد، به داشبورد هدایت کن
+  
     if (isAuthenticated) {
       setCurrentView('dashboard'); // اگر نام ویوی اصلی در اپ شما فرق دارد، آن را قرار دهید
     }
@@ -142,6 +142,7 @@ const AuthPage: React.FC = () => {
           </div>
 
           <AnimatePresence mode="wait">
+            <form onSubmit={handleSubmit}>
             {error && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
@@ -235,7 +236,7 @@ const AuthPage: React.FC = () => {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     name="confirmPassword"
                     value={formData.confirmPassword}
                     onChange={handleChange}
