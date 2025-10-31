@@ -12,95 +12,103 @@ import { validateRegistration, validateLogin } from '../utils/validation';
 export const authService = {
 
  
-  async register(credentials: RegisterCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string }> {
-    try {
-      const validationErrors = validateRegistration({
-        email: credentials.email,
-        password: credentials.password,
-        confirmPassword: credentials.confirmPassword || '',
-        username: credentials.username,
-        phone_number: credentials.phone_number,
-      });
+async register(credentials: RegisterCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string; exists?: boolean }> {
+  try {
+    const validationErrors = validateRegistration({
+      email: credentials.email,
+      password: credentials.password,
+      confirmPassword: credentials.confirmPassword || '',
+      username: credentials.username,
+      phone_number: credentials.phone_number,
+    });
 
-      if (validationErrors.length > 0) {
-        const msg = validationErrors.map(e => `${e.field}: ${e.message}`).join('; ');
-        return {
-          success: false,
-          error: msg,
-        };
-      }
-
-      const { data, error } = await supabase.auth.signUp({
-        email: credentials.email,
-        password: credentials.password,
-        options: {
-          data: {
-            username: credentials.username,
-            phone_number: credentials.phone_number,
-          },
-        },
-      });
-
-      if (error) {
-        const code = (error as any)?.status || (error as any)?.code || '';
-      const m = error.message?.toLowerCase?.() || '';
-
-        if (m.includes('confirm') && m.includes('email')) {
-          return {
-            success: false,
-            error: 'Please confirm your email before logging in.',
-          };
-        }
-        return {
-          success: false,
-          error: error.message,
-        };
-      }
-
-if (data?.user?.id) {
-        try {
-          // insert profile only if not exists
-          await supabase
-            .from('user_profiles')
-            .insert(
-              [
-                {
-                  id: data.user.id,
-                  username: credentials.username || null,
-                  full_name: credentials.username || null,
-                  avatar_url: null,
-                },
-              ],
-              { onConflict: 'id' } // safe: do nothing if already exists
-            );
-        } catch (insertErr) {
-          console.error('Failed to create user_profiles row after signUp:', insertErr);
-          // Don't fail the whole register just because profile insert failed.
-        }
-      }
-
-      
-      if (data?.session) {
-        return {
-          success: true,
-          user: data.user,
-          session: data.session,
-        };
-      }
-
-      return {
-        success: true,
-        user: data.user || undefined,
-        session: undefined,
-      };
-    } catch (err) {
+    if (validationErrors.length > 0) {
+      const msg = validationErrors.map(e => `${e.field}: ${e.message}`).join('; ');
       return {
         success: false,
-        error: err instanceof Error ? err.message : 'An unexpected error occurred',
+        error: msg,
       };
     }
-  },
 
+    const { data, error } = await supabase.auth.signUp({
+      email: credentials.email,
+      password: credentials.password,
+      options: {
+        data: {
+          username: credentials.username,
+          phone_number: credentials.phone_number,
+        },
+      },
+    });
+
+    if (error) {
+      const code = (error as any)?.status || (error as any)?.code || '';
+      const m = error.message?.toLowerCase?.() || '';
+
+      // Handle "user already exists" explicitly
+      if ((code === 422) || m.includes('already exists') || (error?.message?.toLowerCase?.().includes('user_already_exists'))) {
+        return {
+          success: false,
+          error: 'User already registered',
+          exists: true,
+        };
+      }
+
+      if (m.includes('confirm') && m.includes('email')) {
+        return {
+          success: false,
+          error: 'Please confirm your email before logging in.',
+        };
+      }
+
+      return {
+        success: false,
+        error: error.message || 'Registration failed',
+      };
+    }
+
+    // create user_profiles row if user id is returned
+    if (data?.user?.id) {
+      try {
+        await supabase
+          .from('user_profiles')
+          .insert(
+            [
+              {
+                id: data.user.id,
+                username: credentials.username || null,
+                full_name: credentials.username || null,
+                avatar_url: null,
+              },
+            ],
+            { upsert: true } // safe upsert so we don't error if exists
+          );
+      } catch (insertErr) {
+        console.error('Failed to create user_profiles row after signUp:', insertErr);
+      }
+    }
+
+    if (data?.session) {
+      return {
+        success: true,
+        user: data.user,
+        session: data.session,
+      };
+    }
+
+    return {
+      success: true,
+      user: data.user || undefined,
+      session: undefined,
+    };
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred',
+    };
+  }
+}
+ 
   async login(credentials: LoginCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string }> {
     try {
       const validationErrors = validateLogin(credentials);
