@@ -98,9 +98,10 @@ export const authService = {
       const validationErrors = validateLogin(credentials);
 
       if (validationErrors.length > 0) {
+        const msg = validationErrors.map(e => `${e.field}: ${e.message}`).join('; ');
         return {
           success: false,
-          error: 'Validation failed',
+          error: msg,
         };
       }
 
