@@ -194,6 +194,8 @@ export const authService = {
     }
   },
 
+
+  
  async getUserProfile(userId: string): Promise<UserProfile | null> {
     try {
       // Try the most common column name first (user_id), but if the table schema
