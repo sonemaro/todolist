@@ -217,6 +217,19 @@ export const useTaskStore = create<TaskState>()(
         return tasks.filter(task => task.category.id === categoryId);
       },
 
+       getTasksByStatus: (status) => {
+        const { tasks } = get();
+        switch (status) {
+          case 'completed':
+            return tasks.filter(t => !!t.completed);
+          case 'pending':
+            return tasks.filter(t => !t.completed);
+          // add more statuses if your app uses them
+          default:
+            return tasks;
+        }
+      },
+
       getCompletionRate: () => {
         const { tasks } = get();
         if (tasks.length === 0) return 0;
