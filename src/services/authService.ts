@@ -220,53 +220,25 @@ if (data?.user?.id) {
 
   
  async getUserProfile(userId: string): Promise<UserProfile | null> {
-    try {
-      // Try the most common column name first (user_id), but if the table schema
-      // uses a different column (e.g., id), catch the DB error and retry.
       try {
         const { data, error } = await supabase
           .from('user_profiles')
           .select('*')
-          .eq('user_id', userId)
+          .eq('id', userId)
           .maybeSingle();
 
         if (error) {
-          // If the error is column-not-found, we will try a fallback below.
-          throw error;
+          console.error('Error fetching user profile (by id):', error);
+        return null;
         }
 
         return data as UserProfile | null;
-      } catch (err: any) {
-        // If the DB returned a "column does not exist" error, try fallback column name 'id'
-        const code = err?.code || err?.status || '';
-        if (code === '42703' || (err?.message && err.message.toLowerCase().includes('does not exist'))) {
-          // fallback attempt
-          try {
-            const { data: data2, error: error2 } = await supabase
-              .from('user_profiles')
-              .select('*')
-              .eq('id', userId)
-              .maybeSingle();
-
-            if (error2) {
-              throw error2;
-            }
-
-            return data2 as UserProfile | null;
-          } catch (err2) {
-            console.error('Error fetching user profile with fallback id:', err2);
-            return null;
-          }
-        }
-
-        console.error('Error fetching user profile (initial attempt):', err);
-        return null;
-      }
-    } catch (err) {
-      console.error('Unexpected error fetching user profile:', err);
+      } catch (err) {
+        console.error('Unexpected error fetching user profile:', err);
       return null;
     }
   },
+            
 
   async updateProfile(userId: string, updates: ProfileUpdateData): Promise<{ profile: UserProfile | null; error: AuthError | null }> {
     try {
