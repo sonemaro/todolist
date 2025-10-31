@@ -1,0 +1,47 @@
+{
+  "name": "Advanced ToDo - Persian & English",
+  "short_name": "AdvancedToDo",
+  "description": "Hyper-advanced bilingual ToDo list application with Persian RTL and English LTR support",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0F172A",
+  "theme_color": "#A7F3D0",
+  "orientation": "portrait-primary",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Quick Add Task",
+      "short_name": "Add Task",
+      "description": "Quickly add a new task",
+      "url": "/?action=add",
+      "icons": [
+        {
+          "src": "/vite.svg",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Focus Mode",
+      "short_name": "Focus",
+      "description": "Enter focus mode",
+      "url": "/?mode=focus",
+      "icons": [
+        {
+          "src": "/vite.svg",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
