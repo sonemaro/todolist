@@ -70,6 +70,27 @@ const AuthPage: React.FC = () => {
          setError(result.error || t('registrationFailed'));
         return;
       }
+  // registration succeeded — show success then attempt login with provided credentials
+      setSuccess(t('registrationSuccess') || 'Registration successful!');
+
+      // attempt automatic login with same credentials
+      const loginResult = await login({
+        email: formData.email,
+        password: formData.password,
+        phone: formData.phone || undefined,
+        remember_me: false,
+      });
+
+      console.log('AUTO LOGIN RESULT AFTER REGISTER:', loginResult);
+
+      if (!loginResult.success) {
+        // If auto-login failed, show the error but keep success message visible
+        setError(loginResult.error || t('loginFailed'));
+        return;
+      }
+
+      // login succeeded -> set current view (useEffect will also handle it via isAuthenticated)
+      setCurrentView('dashboard');
     } else {
       const result = await login({
         email: formData.email,
@@ -83,12 +104,12 @@ const AuthPage: React.FC = () => {
       if (!result.success) {
         setError(result.error || t('loginFailed'));
       } else {
-        // اگر خواستید فوراً ریدایرکت انجام شود می‌توانید setCurrentView هم اینجا صدا بزنید.
         setCurrentView('dashboard');
       }
     }
   };
 
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pastel-mint via-pastel-blue to-pastel-lavender p-4">
       <motion.div
