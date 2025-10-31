@@ -7,7 +7,7 @@ import { useAppStore } from '../../stores/useAppStore';
 
 const AuthPage: React.FC = () => {
   const { t } = useTranslation();
-  const { login, register, isLoading } = useAuthStore();
+  const { login, register, isLoading, isAuthenticated } = useAuthStore();
   const { setCurrentView } = useAppStore();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
