@@ -55,6 +55,29 @@ export const authService = {
         };
       }
 
+if (data?.user?.id) {
+        try {
+          // insert profile only if not exists
+          await supabase
+            .from('user_profiles')
+            .insert(
+              [
+                {
+                  id: data.user.id,
+                  username: credentials.username || null,
+                  full_name: credentials.username || null,
+                  avatar_url: null,
+                },
+              ],
+              { onConflict: 'id' } // safe: do nothing if already exists
+            );
+        } catch (insertErr) {
+          console.error('Failed to create user_profiles row after signUp:', insertErr);
+          // Don't fail the whole register just because profile insert failed.
+        }
+      }
+
+      
       if (data?.session) {
         return {
           success: true,
@@ -62,7 +85,7 @@ export const authService = {
           session: data.session,
         };
       }
-
+////////////
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
@@ -81,11 +104,11 @@ export const authService = {
           error: signInError.message || 'Login failed',
         };
       }
-
+////////////
       return {
         success: true,
-        user: signInData.user,
-        session: signInData.session,
+        user: data.user || undefined,
+        session: undefined,
       };
     } catch (err) {
       return {
