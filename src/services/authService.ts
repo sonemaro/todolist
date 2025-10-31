@@ -85,26 +85,7 @@ if (data?.user?.id) {
           session: data.session,
         };
       }
-////////////
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: credentials.email,
-        password: credentials.password,
-      });
 
-      if (signInError) {
-        const m = signInError.message?.toLowerCase?.() || '';
-        if (m.includes('confirm') && m.includes('email')) {
-          return {
-            success: false,
-            error: 'Please confirm your email before logging in.',
-          };
-        }
-        return {
-          success: false,
-          error: signInError.message || 'Login failed',
-        };
-      }
-////////////
       return {
         success: true,
         user: data.user || undefined,
