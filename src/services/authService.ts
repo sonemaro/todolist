@@ -13,8 +13,11 @@ export const authService = {
   async register(credentials: RegisterCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string }> {
     try {
       const validationErrors = validateRegistration({
-        ...credentials,
-        confirmPassword: credentials.password,
+        email: credentials.email,
+        password: credentials.password,
+        confirmPassword: credentials.confirmPassword || '',
+        username: credentials.username,
+        phone_number: credentials.phone_number,
       });
 
       if (validationErrors.length > 0) {
