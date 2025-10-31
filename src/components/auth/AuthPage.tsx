@@ -19,11 +19,12 @@ const AuthPage: React.FC = () => {
     phone: '',
   });
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   useEffect(() => {
   
     if (isAuthenticated) {
-      setCurrentView('dashboard'); // اگر نام ویوی اصلی در اپ شما فرق دارد، آن را قرار دهید
+      setCurrentView('dashboard'); 
     }
   }, [isAuthenticated, setCurrentView]);
 
