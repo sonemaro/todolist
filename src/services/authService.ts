@@ -42,7 +42,9 @@ export const authService = {
       });
 
       if (error) {
-        const m = error.message?.toLowerCase?.() || '';
+        const code = (error as any)?.status || (error as any)?.code || '';
+      const m = error.message?.toLowerCase?.() || '';
+
         if (m.includes('confirm') && m.includes('email')) {
           return {
             success: false,
