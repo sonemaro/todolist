@@ -20,6 +20,9 @@ const AuthPage: React.FC = () => {
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showExistsOptions, setShowExistsOptions] = useState(false);
+  const [resetInProgress, setResetInProgress] = useState(false);
+
 
   useEffect(() => {
   
@@ -33,8 +36,33 @@ const AuthPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
     setError('');
     setSuccess('');
+    setShowExistsOptions(false);
   };
 
+  const handleSendPasswordReset = async () => {
+    setError('');
+    setSuccess('');
+    if (!formData.email) {
+      setError('لطفاً ایمیل را وارد کنید تا رمز بازنشانی شود.');
+      return;
+    }
+
+    try {
+      setResetInProgress(true);
+      const res = await authService.sendPasswordReset(formData.email);
+      if (!res.success) {
+        setError(res.error || 'ارسال ایمیل بازیابی رمز با خطا مواجه شد.');
+      } else {
+        setSuccess('ایمیل بازیابی رمز ارسال شد. صندوق ورودی خود را بررسی کنید.');
+        setShowExistsOptions(false);
+      }
+    } catch (err: any) {
+      setError(err?.message || 'خطای نامشخص در ارسال ایمیل بازیابی.');
+    } finally {
+      setResetInProgress(false);
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
