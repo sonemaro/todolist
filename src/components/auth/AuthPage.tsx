@@ -96,11 +96,19 @@ const AuthPage: React.FC = () => {
       console.log('REGISTER RESULT:', result);
 
       if (!result.success) {
+        if (result.exists) {
+          setError('این ایمیل قبلاً ثبت شده است.');
+          setShowExistsOptions(true);
+          // keep email but clear passwords for safety/UX
+          setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
+          return;
+        }
+        
          setError(result.error || t('registrationFailed'));
         return;
       }
   // registration succeeded — show success then attempt login with provided credentials
-      setSuccess(t('registrationSuccess') || 'Registration successful!');
+      setSuccess(t('registrationSuccess') || 'ثبت‌نام با موفقیت انجام شد!');
 
       // attempt automatic login with same credentials
       const loginResult = await login({
