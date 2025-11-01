@@ -85,7 +85,7 @@ const AuthPage: React.FC = () => {
         return;
       }
 
-      const result = await register({
+       const result: any = await register({
         email: formData.email,
         password: formData.password,
         username: formData.username,
@@ -107,8 +107,8 @@ const AuthPage: React.FC = () => {
          setError(result.error || t('registrationFailed'));
         return;
       }
-  // registration succeeded — show success then attempt login with provided credentials
-      setSuccess(t('registrationSuccess') || 'ثبت‌نام با موفقیت انجام شد!');
+  
+      setSuccess(t('registrationSuccess') || 'ثبت‌ نام با موفقیت انجام شد!');
 
       // attempt automatic login with same credentials
       const loginResult = await login({
@@ -126,7 +126,6 @@ const AuthPage: React.FC = () => {
         return;
       }
 
-      // login succeeded -> set current view (useEffect will also handle it via isAuthenticated)
       setCurrentView('dashboard');
     } else {
       const result = await login({
