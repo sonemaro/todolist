@@ -80,9 +80,7 @@ async register(credentials: RegisterCredentials): Promise<{ success: boolean; us
                 full_name: credentials.username || null,
                 avatar_url: null,
               },
-            ],
-            { upsert: true } // safe upsert so we don't error if exists
-          );
+          ]);
       } catch (insertErr) {
         console.error('Failed to create user_profiles row after signUp:', insertErr);
       }
@@ -107,7 +105,7 @@ async register(credentials: RegisterCredentials): Promise<{ success: boolean; us
       error: err instanceof Error ? err.message : 'An unexpected error occurred',
     };
   }
-}
+},
  
   async login(credentials: LoginCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string }> {
     try {
