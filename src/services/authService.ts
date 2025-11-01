@@ -161,6 +161,19 @@ async register(credentials: RegisterCredentials): Promise<{ success: boolean; us
     }
   },
 
+  async sendPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        return { success: false, error: error.message || 'Failed to send password reset' };
+      }
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: err instanceof Error ? err.message : 'Unexpected error' };
+    }
+  },
+
+  
   async logout(): Promise<{ error: AuthError | null }> {
     try {
       const { error } = await supabase.auth.signOut();
