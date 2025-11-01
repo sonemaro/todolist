@@ -201,6 +201,32 @@ const AuthPage: React.FC = () => {
                 className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm"
               >
                 {error}
+                {showExistsOptions && (
+                  <div className="mt-3 flex space-x-2 rtl:space-x-reverse">
+                    <button
+                      onClick={() => {
+                        setMode('login');
+                        setShowExistsOptions(false);
+                        setError('');
+                      }}
+                      className="flex-1 py-2 px-3 bg-blue-600 text-white rounded-lg"
+                    >
+                      ورود
+                    </button>
+                    <button
+                      onClick={handleSendPasswordReset}
+                      disabled={resetInProgress}
+                      className="flex-1 py-2 px-3 bg-yellow-500 text-white rounded-lg"
+                    >
+                      {resetInProgress ? 'در حال ارسال...' : 'بازنشانی رمز'}
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+            {success && (
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400 text-sm">
+                {success}
               </motion.div>
             )}
           </AnimatePresence>
