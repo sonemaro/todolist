@@ -67,6 +67,7 @@ const AuthPage: React.FC = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+     setShowExistsOptions(false);
 
     if (mode === 'register') {
       if (formData.password !== formData.confirmPassword) {
