@@ -110,24 +110,14 @@ const AuthPage: React.FC = () => {
   
       setSuccess(t('registrationSuccess') || 'ثبت‌ نام با موفقیت انجام شد!');
 
-      // attempt automatic login with same credentials
-      const loginResult = await login({
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone || undefined,
-        remember_me: false,
-      });
-
-      console.log('AUTO LOGIN RESULT AFTER REGISTER:', loginResult);
-
-      if (!loginResult.success) {
-        // If auto-login failed, show the error but keep success message visible
-        setError(loginResult.error || t('loginFailed'));
-        return;
+     
+      if (result.session) {
+        setCurrentView('dashboard');
+      } else {
+        setSuccess((t('registrationSuccess') || 'ثبت‌نام با موفقیت انجام شد!') + ' ' + (t('pleaseConfirmEmail') || 'لطفاً ایمیل خود را برای تایید بررسی کنید.'));
       }
-
-      setCurrentView('dashboard');
     } else {
+      // LOGIN flow (unchanged)
       const result = await login({
         email: formData.email,
         password: formData.password,
