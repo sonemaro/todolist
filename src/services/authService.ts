@@ -357,3 +357,35 @@ export const sendPasswordReset = async (email: string) => {
   if (error) return { success: false, error: error.message };
   return { success: true };
 };
+
+export const changePassword = async (newPassword: string) => {
+  const { error } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+};
+
+export const registerWithPhone = async (phone: string, password: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    phone,
+    password,
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true, data };
+};
+
+export const loginWithPhone = async (phone: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    phone,
+    password,
+  });
+  if (error) {
+    const m = error.message?.toLowerCase?.() || '';
+    if (m.includes('confirm') && m.includes('phone')) {
+      return { success: false, error: 'Please confirm your phone before logging in.' };
+    }
+    return { success: false, error: error.message };
+  }
+  return { success: true, data };
+};

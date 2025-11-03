@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { User, Mail, Phone, Award, TrendingUp, LogOut } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { User, Mail, Phone, Award, TrendingUp, LogOut, Edit2, Loader, Lock } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAppStore } from '../../stores/useAppStore';
 import { useRewardsStore } from '../../stores/rewardsStore';
@@ -9,15 +9,121 @@ import ProfileForm from './ProfileForm';
 import GamificationDisplay from '../progress/GamificationDisplay';
 import RewardBadge from '../rewards/RewardBadge';
 import AchievementList from './AchievementList';
+import AvatarUpload from './AvatarUpload';
+import { changePassword } from '../../services/authService';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
-  const { session, profile, isLoading, loadProfile, logout } = useAuthStore();
+  const { session, profile, isLoading, loadProfile, logout, updateProfile, uploadAvatar } = useAuthStore();
   const { stats } = useAppStore();
   const { balance, getUnclaimedRewards } = useRewardsStore();
 
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    oldPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [editError, setEditError] = useState('');
+  const [editSuccess, setEditSuccess] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  useEffect(() => {
+    if (profile && showEditModal) {
+      setEditForm({
+        name: profile.full_name || '',
+        email: session?.user?.email || '',
+        phone: profile.phone_number || '',
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    }
+  }, [profile, session, showEditModal]);
+
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleAvatarUpload = async (file: File) => {
+    setAvatarUploading(true);
+    setEditError('');
+    try {
+      const result = await uploadAvatar(file);
+      if (result.success) {
+        setEditSuccess('Avatar updated successfully!');
+        setTimeout(() => setEditSuccess(''), 3000);
+      } else {
+        setEditError(result.error || 'Failed to upload avatar');
+      }
+    } catch (error: any) {
+      setEditError(error?.message || 'Failed to upload avatar');
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditError('');
+    setEditSuccess('');
+    setIsSaving(true);
+
+    try {
+      const updates: any = {};
+      if (editForm.name !== profile?.full_name) updates.full_name = editForm.name;
+      if (editForm.phone !== profile?.phone_number) updates.phone_number = editForm.phone;
+
+      if (Object.keys(updates).length > 0) {
+        const result = await updateProfile(updates);
+        if (!result.success) {
+          setEditError(result.error || 'Failed to update profile');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      if (editForm.newPassword) {
+        if (editForm.newPassword !== editForm.confirmPassword) {
+          setEditError('New passwords do not match');
+          setIsSaving(false);
+          return;
+        }
+        if (editForm.newPassword.length < 8) {
+          setEditError('Password must be at least 8 characters');
+          setIsSaving(false);
+          return;
+        }
+        const pwdResult = await changePassword(editForm.newPassword);
+        if (!pwdResult.success) {
+          setEditError(pwdResult.error || 'Failed to change password');
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      setEditSuccess('Profile updated successfully!');
+      setTimeout(() => {
+        setShowEditModal(false);
+        setEditSuccess('');
+        setEditForm({
+          name: '',
+          email: '',
+          phone: '',
+          oldPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      }, 1500);
+    } catch (error: any) {
+      setEditError(error?.message || 'Failed to update profile');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   useEffect(() => {
@@ -63,6 +169,15 @@ const ProfilePage: React.FC = () => {
               <div className="relative">
                 <RewardBadge />
               </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowEditModal(true)}
+                className="flex items-center space-x-2 rtl:space-x-reverse bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+              >
+                <Edit2 className="h-5 w-5" />
+                <span className="font-medium">Edit Profile</span>
+              </motion.button>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -202,6 +317,174 @@ const ProfilePage: React.FC = () => {
           </motion.div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showEditModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+            onClick={() => setShowEditModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-6 w-full max-w-2xl my-8"
+            >
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
+                Edit Profile
+              </h2>
+
+              <AvatarUpload
+                currentAvatar={profile?.avatar_url}
+                onUpload={handleAvatarUpload}
+                isLoading={avatarUploading}
+              />
+
+              <AnimatePresence>
+                {editError && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm"
+                  >
+                    {editError}
+                  </motion.div>
+                )}
+                {editSuccess && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="mt-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-400 text-sm"
+                  >
+                    {editSuccess}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <form onSubmit={handleEditSubmit} className="mt-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Full Name
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-pastel-mint focus:border-transparent"
+                      placeholder="Enter your name"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email (read-only)
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      disabled
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Phone (optional)
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    <input
+                      type="tel"
+                      value={editForm.phone}
+                      onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                      className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-pastel-mint focus:border-transparent"
+                      placeholder="Enter your phone"
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Change Password
+                  </h3>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        New Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="password"
+                          value={editForm.newPassword}
+                          onChange={(e) => setEditForm({ ...editForm, newPassword: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-pastel-mint focus:border-transparent"
+                          placeholder="Leave blank to keep current"
+                          minLength={8}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Confirm New Password
+                      </label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <input
+                          type="password"
+                          value={editForm.confirmPassword}
+                          onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                          className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-pastel-mint focus:border-transparent"
+                          placeholder="Confirm new password"
+                          minLength={8}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 rtl:space-x-reverse pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="flex-1 py-3 bg-gradient-to-r from-pastel-mint to-pastel-blue text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader className="animate-spin h-5 w-5 mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, Eye, EyeOff, Loader } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Loader, Phone } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAuthStore } from '../../stores/authStore';
 import { useAppStore } from '../../stores/useAppStore';
-import { sendPasswordReset } from '../../services/authService';
+import { sendPasswordReset, registerWithPhone, loginWithPhone } from '../../services/authService';
 
 const AuthPage: React.FC = () => {
   const { t } = useTranslation();
@@ -13,11 +13,10 @@ const AuthPage: React.FC = () => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    email: '',
+    emailOrPhone: '',
     password: '',
     username: '',
     confirmPassword: '',
-    phone: '',
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -25,6 +24,9 @@ const AuthPage: React.FC = () => {
   const [resetInProgress, setResetInProgress] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
+
+  const isEmail = (value: string) => value.includes('@');
+  const inputType = isEmail(formData.emailOrPhone) ? 'email' : 'phone';
 
 
   useEffect(() => {
@@ -45,7 +47,7 @@ const AuthPage: React.FC = () => {
   const handleSendPasswordReset = async () => {
     setError('');
     setSuccess('');
-    const emailToReset = resetEmail || formData.email;
+    const emailToReset = resetEmail || (isEmail(formData.emailOrPhone) ? formData.emailOrPhone : '');
     if (!emailToReset) {
       setError('Please enter your email address.');
       return;
@@ -91,50 +93,69 @@ const AuthPage: React.FC = () => {
         return;
       }
 
-       const result: any = await register({
-        email: formData.email,
-        password: formData.password,
-        username: formData.username,
-        confirmPassword: formData.confirmPassword,
-        phone_number: formData.phone || undefined,
-      });
+      const isEmailType = isEmail(formData.emailOrPhone);
+      let result: any;
+
+      if (isEmailType) {
+        result = await register({
+          email: formData.emailOrPhone,
+          password: formData.password,
+          username: formData.username,
+          confirmPassword: formData.confirmPassword,
+        });
+      } else {
+        const phoneResult = await registerWithPhone(formData.emailOrPhone, formData.password);
+        if (!phoneResult.success) {
+          setError(phoneResult.error || t('registrationFailed'));
+          return;
+        }
+        result = phoneResult;
+      }
 
       console.log('REGISTER RESULT:', result);
 
       if (!result.success) {
         if (result.exists) {
-          setError('این ایمیل قبلاً ثبت شده است.');
+          setError('This account already exists.');
           setShowExistsOptions(true);
-          // keep email but clear passwords for safety/UX
           setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
           return;
         }
-        
-         setError(result.error || t('registrationFailed'));
+
+        setError(result.error || t('registrationFailed'));
         return;
       }
-  
-      setSuccess(t('registrationSuccess') || 'ثبت‌ نام با موفقیت انجام شد!');
 
-     
-      if (result.session) {
+      setSuccess(t('registrationSuccess') || 'Registration successful!');
+
+      if (result.session || result.data?.session) {
         setCurrentView('dashboard');
       } else {
-        setSuccess((t('registrationSuccess') || 'ثبت‌نام با موفقیت انجام شد!') + ' ' + (t('pleaseConfirmEmail') || 'لطفاً ایمیل خود را برای تایید بررسی کنید.'));
+        setSuccess('Registration successful! Please confirm your email or phone to continue.');
       }
     } else {
-      // LOGIN flow (unchanged)
-      const result = await login({
-        email: formData.email,
-        password: formData.password,
-        phone: formData.phone || undefined,
-        remember_me: false,
-      });
+      const isEmailType = isEmail(formData.emailOrPhone);
+      let result: any;
+
+      if (isEmailType) {
+        result = await login({
+          email: formData.emailOrPhone,
+          password: formData.password,
+          remember_me: false,
+        });
+      } else {
+        const phoneResult = await loginWithPhone(formData.emailOrPhone, formData.password);
+        if (!phoneResult.success) {
+          setError(phoneResult.error || 'Login failed. Please check your credentials.');
+          return;
+        }
+        result = phoneResult;
+      }
 
       console.log('LOGIN RESULT:', result);
 
       if (!result.success) {
-        setError(result.error || 'Login failed. Please check your email and password.');
+        setError(result.error || 'Login failed. Please check your credentials.');
       }
     }
   };
@@ -262,20 +283,27 @@ const AuthPage: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {t('email')}
+                Email or Phone
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                {inputType === 'email' ? (
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                ) : (
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                )}
                 <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
+                  type="text"
+                  name="emailOrPhone"
+                  value={formData.emailOrPhone}
                   onChange={handleChange}
                   className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-pastel-mint focus:border-transparent"
-                  placeholder={t('enterEmail')}
+                  placeholder="Enter email or phone"
                   required
                 />
               </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {inputType === 'email' ? 'Using email' : 'Using phone'}
+              </p>
             </div>
 
             <div>
