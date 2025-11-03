@@ -349,3 +349,11 @@ async register(credentials: RegisterCredentials): Promise<{ success: boolean; us
     });
   },
 };
+
+export const sendPasswordReset = async (email: string) => {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+};

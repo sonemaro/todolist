@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Phone, Award, TrendingUp } from 'lucide-react';
+import { User, Mail, Phone, Award, TrendingUp, LogOut } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAppStore } from '../../stores/useAppStore';
 import { useRewardsStore } from '../../stores/rewardsStore';
@@ -12,9 +12,13 @@ import AchievementList from './AchievementList';
 
 const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
-  const { session, profile, isLoading, loadProfile } = useAuthStore();
+  const { session, profile, isLoading, loadProfile, logout } = useAuthStore();
   const { stats } = useAppStore();
   const { balance, getUnclaimedRewards } = useRewardsStore();
+
+  const handleLogout = async () => {
+    await logout();
+  };
 
   useEffect(() => {
     if (session && !profile) {
@@ -55,8 +59,19 @@ const ProfilePage: React.FC = () => {
                 {profile?.username || session.user.email}
               </p>
             </div>
-            <div className="relative">
-              <RewardBadge />
+            <div className="flex items-center space-x-4 rtl:space-x-reverse">
+              <div className="relative">
+                <RewardBadge />
+              </div>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleLogout}
+                className="flex items-center space-x-2 rtl:space-x-reverse bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="font-medium">Logout</span>
+              </motion.button>
             </div>
           </div>
         </motion.div>

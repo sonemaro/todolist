@@ -4,6 +4,7 @@ import { Mail, Lock, User, Eye, EyeOff, Loader } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAuthStore } from '../../stores/authStore';
 import { useAppStore } from '../../stores/useAppStore';
+import { sendPasswordReset } from '../../services/authService';
 
 const AuthPage: React.FC = () => {
   const { t } = useTranslation();
@@ -22,6 +23,8 @@ const AuthPage: React.FC = () => {
   const [success, setSuccess] = useState('');
   const [showExistsOptions, setShowExistsOptions] = useState(false);
   const [resetInProgress, setResetInProgress] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
 
 
   useEffect(() => {
@@ -42,22 +45,25 @@ const AuthPage: React.FC = () => {
   const handleSendPasswordReset = async () => {
     setError('');
     setSuccess('');
-    if (!formData.email) {
-      setError('لطفاً ایمیل را وارد کنید تا رمز بازنشانی شود.');
+    const emailToReset = resetEmail || formData.email;
+    if (!emailToReset) {
+      setError('Please enter your email address.');
       return;
     }
 
     try {
       setResetInProgress(true);
-      const res = await authService.sendPasswordReset(formData.email);
+      const res = await sendPasswordReset(emailToReset);
       if (!res.success) {
-        setError(res.error || 'ارسال ایمیل بازیابی رمز با خطا مواجه شد.');
+        setError(res.error || 'Failed to send password reset email.');
       } else {
-        setSuccess('ایمیل بازیابی رمز ارسال شد. صندوق ورودی خود را بررسی کنید.');
+        setSuccess('Password reset email sent. Please check your inbox.');
         setShowExistsOptions(false);
+        setShowForgotPassword(false);
+        setResetEmail('');
       }
     } catch (err: any) {
-      setError(err?.message || 'خطای نامشخص در ارسال ایمیل بازیابی.');
+      setError(err?.message || 'An error occurred while sending the reset email.');
     } finally {
       setResetInProgress(false);
     }
@@ -128,9 +134,7 @@ const AuthPage: React.FC = () => {
       console.log('LOGIN RESULT:', result);
 
       if (!result.success) {
-        setError(result.error || t('loginFailed'));
-      } else {
-        setCurrentView('dashboard');
+        setError(result.error || 'Login failed. Please check your email and password.');
       }
     }
   };
@@ -343,6 +347,21 @@ const AuthPage: React.FC = () => {
             </motion.button>
           </form>
 
+          {mode === 'login' && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => {
+                  setShowForgotPassword(true);
+                  setError('');
+                  setSuccess('');
+                }}
+                className="text-sm text-pastel-mint hover:text-pastel-blue font-medium"
+              >
+                Forgot your password?
+              </button>
+            </div>
+          )}
+
           <div className="mt-6 text-center text-sm text-gray-600 dark:text-gray-400">
             {mode === 'login' ? (
               <>
@@ -374,6 +393,71 @@ const AuthPage: React.FC = () => {
           </div>
         </div>
       </motion.div>
+
+      {showForgotPassword && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowForgotPassword(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl p-6 w-full max-w-md"
+          >
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Reset Password
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Enter your email address and we'll send you a link to reset your password.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-bg text-gray-900 dark:text-white focus:ring-2 focus:ring-pastel-mint focus:border-transparent"
+                  placeholder="Enter your email"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 rtl:space-x-reverse">
+              <button
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  setResetEmail('');
+                }}
+                className="flex-1 py-3 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendPasswordReset}
+                disabled={resetInProgress || !resetEmail}
+                className="flex-1 py-3 bg-gradient-to-r from-pastel-mint to-pastel-blue text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {resetInProgress ? (
+                  <>
+                    <Loader className="animate-spin h-5 w-5 mr-2" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 };
