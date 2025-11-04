@@ -5,7 +5,7 @@ import { UserPreferences, UserStats } from '../types';
 interface AppState {
   preferences: UserPreferences;
   stats: UserStats;
-  currentView: 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'settings' | 'profile' | 'auth';
+  currentView: 'dashboard' | 'tasks' | 'calendar' | 'focus' | 'settings' | 'profile' | 'auth' | 'care';
   isOnline: boolean;
   lastSyncTime: Date | null;
   showLevelUp: boolean;

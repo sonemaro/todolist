@@ -16,6 +16,7 @@ import LevelUpCelebration from './components/common/LevelUpCelebration';
 import ProfilePage from './components/profile/ProfilePage';
 import DashboardPage from './components/dashboard/DashboardPage';
 import AuthPage from './components/auth/AuthPage';
+import CarePage from './components/care/CarePage';
 
 function App() {
   const { currentView, preferences, stats, showLevelUp, setOnlineStatus, setShowLevelUp } = useAppStore();
@@ -105,6 +106,12 @@ function App() {
         return (
           <div className="h-full overflow-auto">
             <ProfilePage />
+          </div>
+        );
+      case 'care':
+        return (
+          <div className="h-full overflow-auto">
+            <CarePage />
           </div>
         );
       case 'settings':

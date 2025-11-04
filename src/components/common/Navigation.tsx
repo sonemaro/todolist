@@ -1,5 +1,5 @@
 import React from 'react';
-import { Calendar, CheckSquare, Focus, Settings, Zap, Target, User, LayoutDashboard } from 'lucide-react';
+import { Calendar, CheckSquare, Focus, Settings, Zap, Target, User, LayoutDashboard, Leaf } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppStore } from '../../stores/useAppStore';
 import { useAuthStore } from '../../stores/authStore';
@@ -13,6 +13,7 @@ const Navigation: React.FC = () => {
     { id: 'dashboard', icon: LayoutDashboard, label: t('dashboard') },
     { id: 'tasks', icon: CheckSquare, label: t('tasks') },
     { id: 'calendar', icon: Calendar, label: t('calendarNav') },
+    { id: 'care', icon: Leaf, label: 'Care' },
     { id: 'focus', icon: Target, label: t('focus') },
     ...(isAuthenticated ? [{ id: 'profile' as const, icon: User, label: t('profile') }] : []),
     { id: 'settings', icon: Settings, label: t('settings') },
