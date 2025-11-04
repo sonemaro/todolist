@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Calendar, Flag, Tag, Folder, Mic } from 'lucide-react';
+import { X, Calendar, Flag, Tag, Folder, Mic, Clock } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useTaskStore } from '../../stores/useTaskStore';
 import { Task, Priority, PastelColor } from '../../types';
 import { getColorClasses } from '../../utils/colorHelpers';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 
 interface TaskFormProps {
   task?: Task | null;
@@ -24,6 +26,9 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
     dueDate: '',
     tags: [] as string[],
   });
+
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState('');
   
   const [tagInput, setTagInput] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -38,7 +43,13 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
         dueDate: task.dueDate ? task.dueDate.toISOString().split('T')[0] : '',
         tags: task.tags,
       });
+      if (task.dueDate) {
+        const date = new Date(task.dueDate);
+        setSelectedDate(date);
+        setSelectedTime(`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`);
+      }
     } else if (defaultDate) {
+      setSelectedDate(defaultDate);
       setFormData(prev => ({
         ...prev,
         dueDate: defaultDate.toISOString().split('T')[0]
@@ -48,16 +59,26 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const selectedCategory = categories.find(cat => cat.id === formData.categoryId);
     if (!selectedCategory) return;
+
+    let finalDueDate: Date | undefined;
+    if (selectedDate && selectedTime) {
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const date = new Date(selectedDate);
+      date.setHours(hours, minutes, 0, 0);
+      finalDueDate = date;
+    } else if (selectedDate) {
+      finalDueDate = selectedDate;
+    }
 
     const taskData = {
       title: formData.title,
       description: formData.description || undefined,
       priority: formData.priority,
       category: selectedCategory,
-      dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
+      dueDate: finalDueDate,
       tags: formData.tags,
       completed: false,
       subtasks: [],
@@ -69,7 +90,7 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
     } else {
       addTask(taskData);
     }
-    
+
     onClose();
   };
 
@@ -254,21 +275,42 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
             </div>
           </div>
 
-          {/* Due Date */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {/* Schedule */}
+          <fieldset className="border border-gray-200 dark:border-dark-border rounded-xl p-4">
+            <legend className="text-sm font-medium text-gray-700 dark:text-gray-300 px-2">
               <Calendar className="inline h-4 w-4 mr-1 rtl:mr-0 rtl:ml-1" />
-              {t('dueDate')}
-            </label>
-            <input
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border 
-                       rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
-                       text-gray-900 dark:text-white"
-            />
-          </div>
+              Schedule
+            </legend>
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
+                <DatePicker
+                  selected={selectedDate}
+                  onChange={(date) => setSelectedDate(date)}
+                  dateFormat="MMM d, yyyy"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
+                           rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
+                           text-gray-900 dark:text-white"
+                  placeholderText="Select date"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-xs text-gray-600 dark:text-gray-400 mb-1">
+                  <Clock className="inline h-3 w-3 mr-1" />
+                  Time
+                </label>
+                <input
+                  type="time"
+                  value={selectedTime}
+                  onChange={(e) => setSelectedTime(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
+                           rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
+                           text-gray-900 dark:text-white"
+                />
+                <p className="text-xs text-gray-500 mt-1">Time is in your local timezone</p>
+              </div>
+            </div>
+          </fieldset>
 
           {/* Tags */}
           <div>
