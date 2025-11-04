@@ -1,13 +1,6 @@
 export type CareItemType = 'plant' | 'pet';
 export type RepeatType = 'none' | 'daily' | 'weekly' | 'monthly';
 
-export interface CareTips {
-  light?: string;
-  water?: string;
-  temperature?: string;
-  notes?: string;
-}
-
 export interface CareItem {
   id: string;
   userId: string;
@@ -15,7 +8,7 @@ export interface CareItem {
   name: string;
   image?: string;
   description?: string;
-  tips?: CareTips;
+  careTips?: string[];
   sharedWith?: string[];
   createdAt: Date;
 }

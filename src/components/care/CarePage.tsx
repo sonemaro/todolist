@@ -1,18 +1,71 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Leaf, Heart, Filter } from 'lucide-react';
+import { Plus, Leaf, Heart, Filter, BarChart3, Download } from 'lucide-react';
 import { useCareStore } from '../../stores/useCareStore';
+import { useNotificationStore } from '../../stores/notificationStore';
 import { CareItem, CareItemType } from '../../types/care';
 import CareItemCard from './CareItemCard';
 import CareItemForm from './CareItemForm';
 import CareItemDetail from './CareItemDetail';
+import CareReports from './CareReports';
 import EmptyState from '../common/EmptyState';
 
+const exportAllToICS = (items: CareItem[], tasks: any[]) => {
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+  };
+
+  const now = new Date();
+  const events = tasks
+    .filter(t => !t.completed)
+    .map(task => {
+      const item = items.find(i => i.id === task.careItemId);
+      const endDate = new Date(task.dueDate.getTime() + 30 * 60 * 1000);
+      return [
+        'BEGIN:VEVENT',
+        `UID:${task.id}@caremanager.app`,
+        `DTSTAMP:${formatDate(now)}`,
+        `DTSTART:${formatDate(task.dueDate)}`,
+        `DTEND:${formatDate(endDate)}`,
+        `SUMMARY:${task.title}${item ? ` - ${item.name}` : ''}`,
+        `DESCRIPTION:Care task${item ? ` for ${item.name}` : ''}`,
+        'STATUS:CONFIRMED',
+        'END:VEVENT'
+      ].join('\r\n');
+    });
+
+  const icsContent = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Care Manager//Care Tasks//EN',
+    ...events,
+    'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'care-tasks.ics';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
 const CarePage: React.FC = () => {
-  const { careItems, filter, setFilter } = useCareStore();
+  const { careItems, careTasks, filter, setFilter } = useCareStore();
+  const { addNotification } = useNotificationStore();
   const [showForm, setShowForm] = useState(false);
   const [selectedItem, setSelectedItem] = useState<CareItem | null>(null);
   const [showDetail, setShowDetail] = useState(false);
+  const [showReports, setShowReports] = useState(false);
 
   const filteredItems = filter === 'all'
     ? careItems
@@ -24,6 +77,16 @@ const CarePage: React.FC = () => {
   const handleItemClick = (item: CareItem) => {
     setSelectedItem(item);
     setShowDetail(true);
+  };
+
+  const handleExportCalendar = () => {
+    const pendingTasks = careTasks.filter(t => !t.completed);
+    if (pendingTasks.length === 0) {
+      addNotification('No pending tasks to export', 'info');
+      return;
+    }
+    exportAllToICS(careItems, careTasks);
+    addNotification(`Exported ${pendingTasks.length} tasks to calendar`, 'success');
   };
 
   return (
@@ -38,15 +101,37 @@ const CarePage: React.FC = () => {
             </p>
           </div>
 
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-pastel-mint hover:bg-pastel-mint/90 text-white px-4 py-2 rounded-xl font-medium
-                     shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200
-                     flex items-center space-x-2 rtl:space-x-reverse"
-          >
-            <Plus className="h-5 w-5" />
-            <span>Add Item</span>
-          </button>
+          <div className="flex items-center space-x-2 rtl:space-x-reverse">
+            <button
+              onClick={() => setShowReports(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-xl font-medium
+                       shadow-md hover:shadow-lg transition-all duration-200
+                       flex items-center space-x-2 rtl:space-x-reverse"
+              title="View Reports"
+            >
+              <BarChart3 className="h-5 w-5" />
+              <span className="hidden sm:inline">Reports</span>
+            </button>
+            <button
+              onClick={handleExportCalendar}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-xl font-medium
+                       shadow-md hover:shadow-lg transition-all duration-200
+                       flex items-center space-x-2 rtl:space-x-reverse"
+              title="Export to Calendar"
+            >
+              <Download className="h-5 w-5" />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={() => setShowForm(true)}
+              className="bg-pastel-mint hover:bg-pastel-mint/90 text-white px-4 py-2 rounded-xl font-medium
+                       shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200
+                       flex items-center space-x-2 rtl:space-x-reverse"
+            >
+              <Plus className="h-5 w-5" />
+              <span>Add Item</span>
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -112,6 +197,7 @@ const CarePage: React.FC = () => {
           }}
         />
       )}
+      {showReports && <CareReports onClose={() => setShowReports(false)} />}
     </div>
   );
 };
