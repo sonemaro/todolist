@@ -1,20 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Globe, Moon, Sun, Calendar, Volume2, VolumeX, Zap, Settings as SettingsIcon } from 'lucide-react';
+import { Globe, Moon, Sun, Calendar, Volume2, VolumeX, Zap, Settings as SettingsIcon, Bell } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppStore } from '../../stores/useAppStore';
+import { reminderService } from '../../services/reminderService';
 
 const Settings: React.FC = () => {
   const { t } = useTranslation();
-  const { 
-    preferences, 
+  const {
+    preferences,
     stats,
-    setLanguage, 
-    setTheme, 
-    setCalendarType, 
-    toggleSound, 
-    setGamificationMode 
+    setLanguage,
+    setTheme,
+    setCalendarType,
+    toggleSound,
+    setGamificationMode
   } = useAppStore();
+
+  const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(reminderService.getSoundEnabled());
+
+  const handleToggleSoundAlerts = () => {
+    const newValue = !soundAlertsEnabled;
+    setSoundAlertsEnabled(newValue);
+    reminderService.setSoundEnabled(newValue);
+  };
 
   const settingSections = [
     {
@@ -112,6 +121,23 @@ const Settings: React.FC = () => {
               <span
                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
                   preferences.soundEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          )
+        },
+        {
+          icon: Bell,
+          title: 'Sound Alerts',
+          description: 'Play audio on task reminders',
+          component: (
+            <button
+              onClick={handleToggleSoundAlerts}
+              className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-200 dark:bg-gray-700"
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                  soundAlertsEnabled ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>

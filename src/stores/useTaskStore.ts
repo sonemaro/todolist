@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { Task, Category, FilterOptions, PastelColor } from '../types';
+import { reminderService } from '../services/reminderService';
 
 interface TaskState {
   tasks: Task[];
@@ -61,7 +62,7 @@ export const useTaskStore = create<TaskState>()(
           updatedAt: new Date(),
           order: get().tasks.length,
         };
-        
+
         set((state) => ({
           tasks: [...state.tasks, newTask],
           categories: state.categories.map(cat =>
@@ -70,9 +71,12 @@ export const useTaskStore = create<TaskState>()(
               : cat
           )
         }));
+
+        reminderService.scheduleReminder(newTask);
       },
 
       updateTask: (id, updates) => {
+        const updatedTask = get().tasks.find(t => t.id === id);
         set((state) => ({
           tasks: state.tasks.map(task =>
             task.id === id
@@ -80,9 +84,15 @@ export const useTaskStore = create<TaskState>()(
               : task
           )
         }));
+
+        if (updatedTask) {
+          const finalTask = { ...updatedTask, ...updates };
+          reminderService.rescheduleReminder(finalTask);
+        }
       },
 
       deleteTask: (id) => {
+        reminderService.cancelReminder(id);
         set((state) => ({
           tasks: state.tasks.filter(task => task.id !== id),
           categories: state.categories.map(cat => ({

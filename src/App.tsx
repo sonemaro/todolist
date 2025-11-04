@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useAppStore } from './stores/useAppStore';
 import { useAuthStore } from './stores/authStore';
+import { useTaskStore } from './stores/useTaskStore';
+import { reminderService } from './services/reminderService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import Header from './components/common/Header';
 import Navigation from './components/common/Navigation';
@@ -18,10 +20,20 @@ import AuthPage from './components/auth/AuthPage';
 function App() {
   const { currentView, preferences, stats, showLevelUp, setOnlineStatus, setShowLevelUp } = useAppStore();
   const { init, isLoading, isAuthenticated } = useAuthStore();
+  const { tasks } = useTaskStore();
 
   useEffect(() => {
     init();
   }, [init]);
+
+  useEffect(() => {
+    if (isAuthenticated && tasks.length > 0) {
+      reminderService.scheduleAllReminders(tasks);
+    }
+    return () => {
+      reminderService.clearAllReminders();
+    };
+  }, [isAuthenticated, tasks]);
 
   useEffect(() => {
     // Initialize theme
@@ -43,7 +55,11 @@ function App() {
     window.addEventListener('offline', handleOffline);
 
     if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+      reminderService.requestPermission().then(granted => {
+        if (!granted) {
+          console.warn('Notification permission not granted');
+        }
+      });
     }
 
     return () => {

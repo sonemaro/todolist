@@ -1,0 +1,10 @@
+Note: This is a placeholder for beep.mp3
+In production, replace this with an actual MP3 audio file.
+For development, the app will gracefully handle the missing audio file.
+
+You can generate a simple beep sound using:
+- Online tools like freesound.org
+- Audio editing software
+- Or use a data URI for inline audio
+
+The reminderService will catch and log any audio loading errors.
