@@ -43,6 +43,7 @@ const CareItemCard: React.FC<CareItemCardProps> = ({ item, index, onClick }) => 
             src={item.image}
             alt={item.name}
             className="h-full w-full object-cover"
+            loading="lazy"
           />
         ) : (
           <Icon className={`h-16 w-16 ${

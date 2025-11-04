@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Trash2, Calendar as CalendarIcon, Leaf, Heart } from 'lucide-react';
+import { X, Plus, Check, Trash2, Calendar as CalendarIcon, Leaf, Heart, Download } from 'lucide-react';
 import { CareItem } from '../../types/care';
 import { useCareStore } from '../../stores/useCareStore';
+import { exportToICS } from '../../utils/calendarExport';
 import CareTaskForm from './CareTaskForm';
 
 interface CareItemDetailProps {
@@ -24,6 +25,8 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
   const { getTasksByCareItem, toggleCareTask, deleteCareTask, deleteCareItem } = useCareStore();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+  const [showImagePreview, setShowImagePreview] = useState(false);
 
   const tasks = getTasksByCareItem(item.id).sort((a, b) =>
     a.dueDate.getTime() - b.dueDate.getTime()
@@ -32,6 +35,18 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
   const isPlant = item.type === 'plant';
   const Icon = isPlant ? Leaf : Heart;
   const themeColor = isPlant ? 'green' : 'orange';
+
+  const handleToggleTask = (taskId: string) => {
+    setCompletingTaskId(taskId);
+    setTimeout(() => {
+      toggleCareTask(taskId);
+      setCompletingTaskId(null);
+    }, 600);
+  };
+
+  const isOverdue = (task: any) => {
+    return !task.completed && task.dueDate < new Date();
+  };
 
   const handleDelete = () => {
     deleteCareItem(item.id);
@@ -55,7 +70,9 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
                 <img
                   src={item.image}
                   alt={item.name}
-                  className="w-20 h-20 rounded-xl object-cover"
+                  className="w-20 h-20 rounded-xl object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setShowImagePreview(true)}
+                  loading="lazy"
                 />
               ) : (
                 <div className={`w-20 h-20 rounded-xl flex items-center justify-center ${
@@ -118,15 +135,39 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
-                  className={`p-4 rounded-xl border-2 transition-all ${
+                  className={`p-4 rounded-xl border-2 transition-all relative ${
                     task.completed
                       ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50'
+                      : isOverdue(task)
+                      ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/10'
                       : 'border-gray-200 dark:border-dark-border bg-white dark:bg-dark-bg'
                   }`}
                 >
+                  {/* Completion Animation */}
+                  <AnimatePresence>
+                    {completingTaskId === task.id && (
+                      <motion.div
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0, opacity: 0 }}
+                        className="absolute inset-0 bg-green-500/20 rounded-xl flex items-center justify-center z-10"
+                      >
+                        <motion.div
+                          initial={{ scale: 0, rotate: 0 }}
+                          animate={{ scale: [0, 1.2, 1], rotate: [0, 180, 360] }}
+                          transition={{ duration: 0.6 }}
+                          className="bg-green-500 rounded-full p-3"
+                        >
+                          <Check className="h-6 w-6 text-white" />
+                        </motion.div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   <div className="flex items-start space-x-3 rtl:space-x-reverse">
                     <button
-                      onClick={() => toggleCareTask(task.id)}
+                      onClick={() => handleToggleTask(task.id)}
+                      disabled={completingTaskId === task.id}
                       className={`
                         flex-shrink-0 mt-0.5 w-5 h-5 rounded-full border-2 transition-all
                         flex items-center justify-center
@@ -155,12 +196,25 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => deleteCareTask(task.id)}
-                      className="flex-shrink-0 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-500" />
-                    </button>
+                    <div className="flex items-center space-x-1 rtl:space-x-reverse">
+                      <button
+                        onClick={() => exportToICS(
+                          `${task.title} - ${item.name}`,
+                          task.dueDate,
+                          `Care task for ${item.name}`
+                        )}
+                        className="flex-shrink-0 p-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                        title="Add to Calendar"
+                      >
+                        <Download className="h-4 w-4 text-blue-500" />
+                      </button>
+                      <button
+                        onClick={() => deleteCareTask(task.id)}
+                        className="flex-shrink-0 p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-500" />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -209,6 +263,35 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
           careItemId={item.id}
           onClose={() => setShowTaskForm(false)}
         />
+      )}
+
+      {/* Image Preview Modal */}
+      {showImagePreview && item.image && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
+          onClick={() => setShowImagePreview(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            className="relative max-w-4xl max-h-[90vh]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={item.image}
+              alt={item.name}
+              className="max-w-full max-h-[90vh] rounded-2xl shadow-2xl object-contain"
+              loading="lazy"
+            />
+            <button
+              onClick={() => setShowImagePreview(false)}
+              className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+            >
+              <X className="h-6 w-6 text-white" />
+            </button>
+          </motion.div>
+        </div>
       )}
     </div>
   );

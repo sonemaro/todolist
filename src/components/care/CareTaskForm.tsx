@@ -13,7 +13,7 @@ interface CareTaskFormProps {
 }
 
 const CareTaskForm: React.FC<CareTaskFormProps> = ({ careItemId, onClose }) => {
-  const { addCareTask } = useCareStore();
+  const { addCareTask, getSuggestedNextDate } = useCareStore();
   const { session } = useAuthStore();
   const [formData, setFormData] = useState({
     title: '',
@@ -21,6 +21,24 @@ const CareTaskForm: React.FC<CareTaskFormProps> = ({ careItemId, onClose }) => {
   });
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [selectedTime, setSelectedTime] = useState<string>('09:00');
+  const [showSuggestion, setShowSuggestion] = useState(false);
+
+  const handleTitleChange = (title: string) => {
+    setFormData({ ...formData, title });
+    if (title.length > 2) {
+      const suggestedDate = getSuggestedNextDate(title, careItemId);
+      if (suggestedDate.getTime() !== selectedDate?.getTime()) {
+        setShowSuggestion(true);
+        setTimeout(() => setShowSuggestion(false), 5000);
+      }
+    }
+  };
+
+  const applySuggestion = () => {
+    const suggestedDate = getSuggestedNextDate(formData.title, careItemId);
+    setSelectedDate(suggestedDate);
+    setShowSuggestion(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,13 +86,31 @@ const CareTaskForm: React.FC<CareTaskFormProps> = ({ careItemId, onClose }) => {
             <input
               type="text"
               value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="e.g., Water, Feed, Vet Visit"
               required
               className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
                        rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
                        text-gray-900 dark:text-white placeholder-gray-500"
             />
+            {showSuggestion && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-between text-sm"
+              >
+                <span className="text-blue-700 dark:text-blue-400">
+                  💡 Suggested: {getSuggestedNextDate(formData.title, careItemId).toLocaleDateString()}
+                </span>
+                <button
+                  type="button"
+                  onClick={applySuggestion}
+                  className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600"
+                >
+                  Apply
+                </button>
+              </motion.div>
+            )}
           </div>
 
           <fieldset className="border border-gray-200 dark:border-dark-border rounded-xl p-4">
