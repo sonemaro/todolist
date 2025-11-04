@@ -6,7 +6,9 @@ import { useTaskStore } from '../../stores/useTaskStore';
 import { Task, Priority, PastelColor } from '../../types';
 import { getColorClasses } from '../../utils/colorHelpers';
 import DatePicker from 'react-datepicker';
+import TimePicker from 'react-time-picker';
 import 'react-datepicker/dist/react-datepicker.css';
+import 'react-time-picker/dist/TimePicker.css';
 
 interface TaskFormProps {
   task?: Task | null;
@@ -28,7 +30,8 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
   });
 
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedTime, setSelectedTime] = useState('');
+  const [selectedTime, setSelectedTime] = useState<string>('');
+  const [recurring, setRecurring] = useState<'none' | 'daily' | 'weekly' | 'monthly'>('none');
   
   const [tagInput, setTagInput] = useState('');
   const [isVoiceActive, setIsVoiceActive] = useState(false);
@@ -299,18 +302,38 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onClose, defaultDate }) => {
                   <Clock className="inline h-3 w-3 mr-1" />
                   Time
                 </label>
-                <input
-                  type="time"
+                <TimePicker
+                  onChange={(value) => setSelectedTime(value || '')}
                   value={selectedTime}
-                  onChange={(e) => setSelectedTime(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
-                           rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
-                           text-gray-900 dark:text-white"
+                  disableClock
+                  format="h:mm a"
+                  className="w-full"
+                  clockIcon={null}
+                  clearIcon={null}
                 />
                 <p className="text-xs text-gray-500 mt-1">Time is in your local timezone</p>
               </div>
             </div>
           </fieldset>
+
+          {/* Recurring */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Repeat
+            </label>
+            <select
+              value={recurring}
+              onChange={(e) => setRecurring(e.target.value as any)}
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
+                       rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
+                       text-gray-900 dark:text-white"
+            >
+              <option value="none">None</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
 
           {/* Tags */}
           <div>

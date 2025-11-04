@@ -9,14 +9,43 @@ import TaskForm from './TaskForm';
 import EmptyState from '../common/EmptyState';
 import QuickAddButton from './QuickAddButton';
 
+type FilterType = 'all' | 'today' | 'week' | 'overdue' | 'completed';
+
 const TaskList: React.FC = () => {
   const { t } = useTranslation();
-  const { getFilteredTasks, reorderTasks, filter, setFilter } = useTaskStore();
+  const { getFilteredTasks, reorderTasks, filter, setFilter, tasks } = useTaskStore();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const filteredTasks = getFilteredTasks();
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  const getFilteredTasksByType = () => {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+    const weekEnd = new Date(todayStart);
+    weekEnd.setDate(weekEnd.getDate() + 7);
+
+    return tasks.filter(task => {
+      if (activeFilter === 'all') return !task.completed;
+      if (activeFilter === 'completed') return task.completed;
+      if (activeFilter === 'today' && task.dueDate) {
+        const dueDate = new Date(task.dueDate);
+        return dueDate >= todayStart && dueDate < todayEnd && !task.completed;
+      }
+      if (activeFilter === 'week' && task.dueDate) {
+        const dueDate = new Date(task.dueDate);
+        return dueDate >= todayStart && dueDate < weekEnd && !task.completed;
+      }
+      if (activeFilter === 'overdue' && task.dueDate) {
+        return new Date(task.dueDate) < now && !task.completed;
+      }
+      return false;
+    });
+  };
+
+  const filteredTasks = getFilteredTasksByType();
   
   const { draggedIndex, handleDragStart, handleDragEnd, handleDragOver } = useDragAndDrop(
     (startIndex, endIndex) => {
@@ -62,7 +91,35 @@ const TaskList: React.FC = () => {
           </button>
         </div>
 
-        {/* Search and Filters */}
+        {/* Filters */}
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+          {[
+            { id: 'all' as FilterType, label: 'All', count: tasks.filter(t => !t.completed).length },
+            { id: 'today' as FilterType, label: 'Today', count: 0 },
+            { id: 'week' as FilterType, label: 'This Week', count: 0 },
+            { id: 'overdue' as FilterType, label: 'Overdue', count: 0 },
+            { id: 'completed' as FilterType, label: 'Completed', count: tasks.filter(t => t.completed).length },
+          ].map(filterItem => (
+            <button
+              key={filterItem.id}
+              onClick={() => setActiveFilter(filterItem.id)}
+              className={`px-4 py-2 rounded-lg font-medium whitespace-nowrap transition-all ${
+                activeFilter === filterItem.id
+                  ? 'bg-pastel-mint text-white shadow-md'
+                  : 'bg-gray-100 dark:bg-dark-card text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
+            >
+              {filterItem.label}
+              {filterItem.count > 0 && (
+                <span className="ml-2 px-2 py-0.5 text-xs bg-white/20 rounded-full">
+                  {filterItem.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Search */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 rtl:left-auto rtl:right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -71,13 +128,13 @@ const TaskList: React.FC = () => {
               placeholder={t('search')}
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 bg-gray-50 dark:bg-dark-card 
+              className="w-full pl-10 rtl:pl-4 rtl:pr-10 pr-4 py-3 bg-gray-50 dark:bg-dark-card
                        border border-gray-200 dark:border-dark-border rounded-xl
                        focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
                        text-gray-900 dark:text-white placeholder-gray-500"
             />
           </div>
-          
+
           <div className="flex space-x-2 rtl:space-x-reverse">
             <button className="px-4 py-3 bg-gray-50 dark:bg-dark-card border border-gray-200 dark:border-dark-border 
                              rounded-xl hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">

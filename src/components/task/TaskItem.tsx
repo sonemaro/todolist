@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Check, CreditCard as Edit2, Trash2, Clock, Flag, Tag, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, CreditCard as Edit2, Trash2, Clock, Flag, Tag, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 import { Task } from '../../types';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useTaskStore } from '../../stores/useTaskStore';
@@ -9,6 +9,16 @@ import { useRewardsStore } from '../../stores/rewardsStore';
 import { getColorClasses } from '../../utils/colorHelpers';
 import { formatDateRelative } from '../../utils/dateHelpers';
 import GestureHandler from '../common/GestureHandler';
+
+const formatDateTime = (date: Date) => {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, '0');
+  return `🕒 ${months[date.getMonth()]} ${date.getDate()}, ${displayHours}:${displayMinutes} ${ampm}`;
+};
 
 interface TaskItemProps {
   task: Task;
@@ -173,9 +183,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
 
                 {/* Due Date */}
                 {task.dueDate && (
-                  <div className={`flex items-center space-x-1 rtl:space-x-reverse ${isOverdue ? 'text-red-500' : ''}`}>
-                    <Clock className="h-3 w-3" />
-                    <span>{formatDateRelative(task.dueDate, language)}</span>
+                  <div className={`flex items-center space-x-1 rtl:space-x-reverse ${isOverdue ? 'text-red-500 font-semibold' : ''}`}>
+                    <span className="text-xs">{formatDateTime(task.dueDate)}</span>
                   </div>
                 )}
               </div>
