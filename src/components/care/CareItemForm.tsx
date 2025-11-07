@@ -17,14 +17,24 @@ const CareItemForm: React.FC<CareItemFormProps> = ({ onClose }) => {
     type: 'plant' as CareItemType,
     description: '',
     image: '',
+    careTips: '' as string,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    const tipsArray = formData.careTips
+      .split('\n')
+      .map(tip => tip.trim())
+      .filter(tip => tip.length > 0);
+
     addCareItem({
-      ...formData,
+      name: formData.name,
+      type: formData.type,
+      description: formData.description,
+      image: formData.image,
+      careTips: tipsArray.length > 0 ? tipsArray : undefined,
       userId: session?.user?.id || 'guest',
     });
 
@@ -128,11 +138,30 @@ const CareItemForm: React.FC<CareItemFormProps> = ({ onClose }) => {
               value={formData.description}
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder="Care notes, special requirements..."
+              rows={2}
+              className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
+                       rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
+                       text-gray-900 dark:text-white placeholder-gray-500 resize-none"
+            />
+          </div>
+
+          {/* Care Tips */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Care Tips (optional)
+            </label>
+            <textarea
+              value={formData.careTips}
+              onChange={(e) => setFormData({ ...formData, careTips: e.target.value })}
+              placeholder="One tip per line:&#10;Water weekly&#10;Bright indirect light&#10;Keep soil moist"
               rows={3}
               className="w-full px-4 py-3 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border
                        rounded-xl focus:outline-none focus:ring-2 focus:ring-pastel-mint focus:border-transparent
                        text-gray-900 dark:text-white placeholder-gray-500 resize-none"
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Enter one tip per line
+            </p>
           </div>
 
           {/* Actions */}
