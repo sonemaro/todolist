@@ -63,16 +63,6 @@ function App() {
       });
     }
 
-    (async () => {
-      const { pushNotifications } = await import('./utils/pushNotifications');
-      await pushNotifications.initialize();
-      if (Notification.permission === 'default') {
-        setTimeout(() => {
-          pushNotifications.requestPermission();
-        }, 3000);
-      }
-    })();
-
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
