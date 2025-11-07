@@ -20,9 +20,6 @@ interface CareState {
   getCareItemWithTasks: (id: string) => { item: CareItem; tasks: CareTask[] } | null;
   getTasksByCareItem: (careItemId: string) => CareTask[];
   getUpcomingTasks: () => CareTask[];
-  getCompletedTasks: () => CareTask[];
-  getOverdueTasks: () => CareTask[];
-  getSuggestedNextDate: (taskTitle: string, careItemId: string) => Date;
   setFilter: (filter: CareItemType | 'all') => void;
 }
 
@@ -134,14 +131,9 @@ export const useCareStore = create<CareState>()(
       },
 
       toggleCareTask: (id) => {
-        const task = get().careTasks.find(t => t.id === id);
-        const isCompleting = task && !task.completed;
-
         set((state) => ({
-          careTasks: state.careTasks.map(t =>
-            t.id === id
-              ? { ...t, completed: !t.completed, completedAt: isCompleting ? new Date() : undefined }
-              : t
+          careTasks: state.careTasks.map(task =>
+            task.id === id ? { ...task, completed: !task.completed } : task
           ),
         }));
       },
@@ -163,46 +155,6 @@ export const useCareStore = create<CareState>()(
           .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
       },
 
-      getCompletedTasks: () => {
-        return get().careTasks
-          .filter(t => t.completed)
-          .sort((a, b) => {
-            const aTime = a.completedAt?.getTime() || a.createdAt.getTime();
-            const bTime = b.completedAt?.getTime() || b.createdAt.getTime();
-            return bTime - aTime;
-          });
-      },
-
-      getOverdueTasks: () => {
-        const now = new Date();
-        return get().careTasks
-          .filter(t => !t.completed && t.dueDate < now)
-          .sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-      },
-
-      getSuggestedNextDate: (taskTitle: string, careItemId: string) => {
-        const tasks = get().careTasks.filter(
-          t => t.careItemId === careItemId && t.title === taskTitle && t.completedAt
-        );
-
-        if (tasks.length === 0) {
-          return new Date(Date.now() + 24 * 60 * 60 * 1000);
-        }
-
-        const sortedTasks = tasks.sort((a, b) =>
-          (b.completedAt?.getTime() || 0) - (a.completedAt?.getTime() || 0)
-        );
-
-        if (sortedTasks.length >= 2) {
-          const lastTwo = sortedTasks.slice(0, 2);
-          const diff = (lastTwo[0].completedAt?.getTime() || 0) - (lastTwo[1].completedAt?.getTime() || 0);
-          const avgDays = Math.round(diff / (24 * 60 * 60 * 1000));
-          return new Date(Date.now() + Math.max(avgDays, 1) * 24 * 60 * 60 * 1000);
-        }
-
-        return new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
-      },
-
       setFilter: (filter) => set({ filter }),
     }),
     {
@@ -221,7 +173,6 @@ export const useCareStore = create<CareState>()(
               ...task,
               dueDate: new Date(task.dueDate),
               createdAt: new Date(task.createdAt),
-              completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
             }));
           }
           return data;
