@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Check, Trash2, Calendar as CalendarIcon, Leaf, Heart, Download, Lightbulb, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Plus, Check, Trash2, Calendar as CalendarIcon, Leaf, Heart, Download } from 'lucide-react';
 import { CareItem } from '../../types/care';
 import { useCareStore } from '../../stores/useCareStore';
 import { exportToICS } from '../../utils/calendarExport';
@@ -27,7 +27,6 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
   const [showImagePreview, setShowImagePreview] = useState(false);
-  const [showTips, setShowTips] = useState(false);
 
   const tasks = getTasksByCareItem(item.id).sort((a, b) =>
     a.dueDate.getTime() - b.dueDate.getTime()
@@ -110,48 +109,6 @@ const CareItemDetail: React.FC<CareItemDetailProps> = ({ item, onClose }) => {
             </button>
           </div>
         </div>
-
-        {/* Care Tips Section */}
-        {item.careTips && item.careTips.length > 0 && (
-          <div className="px-6 py-4 bg-amber-50 dark:bg-amber-900/10 border-y border-amber-100 dark:border-amber-900/30">
-            <button
-              onClick={() => setShowTips(!showTips)}
-              className="w-full flex items-center justify-between text-left"
-            >
-              <div className="flex items-center space-x-2 rtl:space-x-reverse">
-                <Lightbulb className="h-5 w-5 text-amber-500" />
-                <span className="font-semibold text-gray-900 dark:text-white">
-                  Care Tips ({item.careTips.length})
-                </span>
-              </div>
-              {showTips ? (
-                <ChevronUp className="h-5 w-5 text-gray-500" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-gray-500" />
-              )}
-            </button>
-            <AnimatePresence>
-              {showTips && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="mt-3 space-y-2"
-                >
-                  {item.careTips.map((tip, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start space-x-2 rtl:space-x-reverse text-sm text-gray-700 dark:text-gray-300"
-                    >
-                      <span className="text-amber-500 mt-0.5">•</span>
-                      <span>{tip}</span>
-                    </div>
-                  ))}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        )}
 
         {/* Tasks Section */}
         <div className="p-6">
