@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CareItem, CareTask, CareItemType, RepeatType } from '../types/care';
 import { reminderService } from '../services/reminderService';
+import { pushNotifications } from '../utils/pushNotifications';
+import { useAppStore } from './useAppStore';
 
 interface CareState {
   careItems: CareItem[];
@@ -96,6 +98,17 @@ export const useCareStore = create<CareState>()(
           order: 0,
         };
         reminderService.scheduleReminder(mockTask);
+
+        const item = get().careItems.find(i => i.id === taskData.careItemId);
+        const notificationTime = new Date(newTask.dueDate.getTime() - 5 * 60 * 1000);
+        const soundEnabled = useAppStore.getState().preferences.soundEnabled;
+
+        pushNotifications.schedulePushNotification(
+          `🌿 Care Reminder: ${newTask.title}`,
+          item ? `Time to care for ${item.name}` : 'Care task due soon',
+          notificationTime,
+          soundEnabled
+        );
       },
 
       updateCareTask: (id, updates) => {
