@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Globe, Moon, Sun, Calendar, Volume2, VolumeX, Zap, Settings as SettingsIcon, Bell } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppStore } from '../../stores/useAppStore';
+import { useTaskStore } from '../../stores/useTaskStore';
 import { reminderService } from '../../services/reminderService';
 
 const Settings: React.FC = () => {
@@ -16,6 +17,7 @@ const Settings: React.FC = () => {
     toggleSound,
     setGamificationMode
   } = useAppStore();
+  const { tasks } = useTaskStore();
 
   const [soundAlertsEnabled, setSoundAlertsEnabled] = useState(reminderService.getSoundEnabled());
 
@@ -208,7 +210,7 @@ const Settings: React.FC = () => {
           <div className="text-sm text-gray-500 dark:text-gray-400">{t('streak')}</div>
         </div>
         <div className="bg-white dark:bg-dark-card rounded-xl p-4 text-center shadow-lg">
-          <div className="text-2xl font-bold text-pastel-purple">{stats.completedTasks}</div>
+          <div className="text-2xl font-bold text-pastel-purple">{tasks.filter(t => t.completed).length}</div>
           <div className="text-sm text-gray-500 dark:text-gray-400">Completed</div>
         </div>
       </motion.div>

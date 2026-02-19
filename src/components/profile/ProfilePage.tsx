@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { User, Mail, Phone, Award, TrendingUp, LogOut, Edit2, Loader, Lock } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import { useAppStore } from '../../stores/useAppStore';
+import { useTaskStore } from '../../stores/useTaskStore';
 import { useRewardsStore } from '../../stores/rewardsStore';
 import { useTranslation } from '../../hooks/useTranslation';
 import ProfileForm from './ProfileForm';
@@ -16,6 +17,7 @@ const ProfilePage: React.FC = () => {
   const { t } = useTranslation();
   const { session, profile, isLoading, loadProfile, logout, updateProfile, uploadAvatar } = useAuthStore();
   const { stats } = useAppStore();
+  const { tasks } = useTaskStore();
   const { balance, getUnclaimedRewards } = useRewardsStore();
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -309,7 +311,7 @@ const ProfilePage: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600 dark:text-gray-400">{t('tasksCompleted')}</span>
                   <span className="text-xl font-bold text-gray-900 dark:text-white">
-                    {stats.completedTasks}
+                    {tasks.filter(t => t.completed).length}
                   </span>
                 </div>
               </div>

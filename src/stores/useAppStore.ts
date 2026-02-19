@@ -20,6 +20,8 @@ interface AppState {
   setCurrentView: (view: AppState['currentView']) => void;
   updateStats: (stats: Partial<UserStats>) => void;
   incrementPoints: (points: number) => void;
+  decrementPoints: (points: number) => void;
+  incrementCompletedTasks: () => void;
   updateStreak: () => void;
   setOnlineStatus: (status: boolean) => void;
   setSyncTime: (time: Date) => void;
@@ -137,6 +139,30 @@ export const useAppStore = create<AppState>()(
             showLevelUp: leveledUp
           };
         });
+      },
+
+      decrementPoints: (points) => {
+        set((state) => {
+          const newPoints = Math.max(0, state.stats.points - points);
+          const newLevel = Math.floor(newPoints / 100) + 1;
+          return {
+            stats: {
+              ...state.stats,
+              points: newPoints,
+              level: newLevel,
+            },
+          };
+        });
+      },
+
+      incrementCompletedTasks: () => {
+        set((state) => ({
+          stats: {
+            ...state.stats,
+            completedTasks: state.stats.completedTasks + 1,
+            totalTasks: state.stats.totalTasks + 1,
+          },
+        }));
       },
 
       updateStreak: () => {

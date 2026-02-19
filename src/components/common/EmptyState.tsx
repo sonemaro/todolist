@@ -1,8 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { LucideIcon } from 'lucide-react';
 
 interface EmptyStateProps {
-  icon: string;
+  icon: string | LucideIcon | React.FC<any>;
   title: string;
   description: string;
   actionLabel?: string;
@@ -10,12 +11,14 @@ interface EmptyStateProps {
 }
 
 const EmptyState: React.FC<EmptyStateProps> = ({ 
-  icon, 
+  icon: IconProp, 
   title, 
   description, 
   actionLabel, 
   onAction 
 }) => {
+  const isComponent = typeof IconProp !== 'string';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -34,7 +37,11 @@ const EmptyState: React.FC<EmptyStateProps> = ({
         }}
         className="text-6xl mb-4"
       >
-        {icon}
+        {isComponent ? (
+          <IconProp className="h-16 w-16 text-gray-300 dark:text-gray-600" />
+        ) : (
+          IconProp
+        )}
       </motion.div>
       
       <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2 text-center">
