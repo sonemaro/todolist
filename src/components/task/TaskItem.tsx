@@ -39,8 +39,8 @@ const TaskItem: React.FC<TaskItemProps> = ({
 }) => {
   const { t, language } = useTranslation();
   const { toggleTask, deleteTask } = useTaskStore();
-  const { incrementPoints } = useAppStore();
-  const { createTaskCompletionReward } = useRewardsStore();
+  const { incrementPoints, incrementCompletedTasks } = useAppStore();
+  const { createTaskCompletionReward, isTaskRewarded } = useRewardsStore();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
 
@@ -49,9 +49,13 @@ const TaskItem: React.FC<TaskItemProps> = ({
       setIsCompleting(true);
       setTimeout(() => {
         toggleTask(task.id);
-        const pointsEarned = task.priority === 'urgent' ? 20 : task.priority === 'high' ? 15 : task.priority === 'medium' ? 10 : 5;
-        incrementPoints(pointsEarned);
-        createTaskCompletionReward(task.priority);
+        // Only award points if this task hasn't been rewarded before
+        if (!isTaskRewarded(task.id)) {
+          const pointsEarned = task.priority === 'urgent' ? 20 : task.priority === 'high' ? 15 : task.priority === 'medium' ? 10 : 5;
+          incrementPoints(pointsEarned);
+          incrementCompletedTasks();
+          createTaskCompletionReward(task.priority, task.id);
+        }
         setIsCompleting(false);
       }, 300);
     } else {

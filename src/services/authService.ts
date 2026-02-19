@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabaseClient';
+import { api } from '../lib/api';
 import {
   RegisterCredentials,
   LoginCredentials,
@@ -7,385 +7,187 @@ import {
   AuthSession,
   AuthError,
 } from '../types/auth';
-import { validateRegistration, validateLogin } from '../utils/validation';
+// Validation is handled by the form component and the server
+
+function saveToken(token: string) {
+  localStorage.setItem('auth_token', token);
+}
+
+function clearToken() {
+  localStorage.removeItem('auth_token');
+}
+
+export function getToken(): string | null {
+  return localStorage.getItem('auth_token');
+}
 
 export const authService = {
-
- 
-async register(credentials: RegisterCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string; exists?: boolean }> {
-  try {
-    const validationErrors = validateRegistration({
-      email: credentials.email,
-      password: credentials.password,
-      confirmPassword: credentials.confirmPassword || '',
-      username: credentials.username,
-      phone_number: credentials.phone_number,
-    });
-
-    if (validationErrors.length > 0) {
-      const msg = validationErrors.map(e => `${e.field}: ${e.message}`).join('; ');
-      return {
-        success: false,
-        error: msg,
-      };
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email: credentials.email,
-      password: credentials.password,
-      options: {
-        data: {
-          username: credentials.username,
-          phone_number: credentials.phone_number,
-        },
-      },
-    });
-
-    if (error) {
-      const code = (error as any)?.status || (error as any)?.code || '';
-      const m = error.message?.toLowerCase?.() || '';
-
-      // Handle "user already exists" explicitly
-      if ((code === 422) || m.includes('already exists') || (error?.message?.toLowerCase?.().includes('user_already_exists'))) {
-        return {
-          success: false,
-          error: 'User already registered',
-          exists: true,
-        };
-      }
-
-      if (m.includes('confirm') && m.includes('email')) {
-        return {
-          success: false,
-          error: 'Please confirm your email before logging in.',
-        };
-      }
-
-      return {
-        success: false,
-        error: error.message || 'Registration failed',
-      };
-    }
-
-    // create user_profiles row if user id is returned
-    if (data?.user?.id) {
-      try {
-        await supabase
-          .from('user_profiles')
-          .insert(
-            [
-              {
-                id: data.user.id,
-                username: credentials.username || null,
-                full_name: credentials.username || null,
-                avatar_url: null,
-              },
-          ]);
-      } catch (insertErr) {
-        console.error('Failed to create user_profiles row after signUp:', insertErr);
-      }
-    }
-
-    if (data?.session) {
-      return {
-        success: true,
-        user: data.user,
-        session: data.session,
-      };
-    }
-
-    return {
-      success: true,
-      user: data.user || undefined,
-      session: undefined,
-    };
-  } catch (err) {
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : 'An unexpected error occurred',
-    };
-  }
-},
- 
-  async login(credentials: LoginCredentials): Promise<{ success: boolean; user?: any; session?: any; error?: string }> {
+  async register(
+    credentials: RegisterCredentials
+  ): Promise<{ success: boolean; user?: any; session?: any; error?: string; exists?: boolean }> {
     try {
-      const validationErrors = validateLogin(credentials);
-
-      if (validationErrors.length > 0) {
-        const msg = validationErrors.map(e => `${e.field}: ${e.message}`).join('; ');
-        return {
-          success: false,
-          error: msg,
-        };
+      const data = await api.post('/api/auth/register', {
+        email: credentials.email,
+        password: credentials.password,
+        username: credentials.username,
+        phone_number: credentials.phone_number,
+      });
+      saveToken(data.token);
+      const session: AuthSession = {
+        access_token: data.token,
+        refresh_token: '',
+        expires_at: 0,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          phone: data.user.phone,
+          created_at: data.user.created_at,
+        },
+      };
+      return { success: true, user: data.user, session };
+    } catch (err: any) {
+      if (err.status === 409) {
+        return { success: false, error: 'User already registered', exists: true };
       }
+      return { success: false, error: err.message || 'Registration failed' };
+    }
+  },
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+  async login(
+    credentials: LoginCredentials
+  ): Promise<{ success: boolean; user?: any; session?: any; error?: string }> {
+    try {
+      const data = await api.post('/api/auth/login', {
         email: credentials.email,
         phone: credentials.phone,
         password: credentials.password,
       });
-
-      if (error) {
-        const m = error.message?.toLowerCase?.() || '';
-        if (m.includes('confirm') && m.includes('email')) {
-          return {
-            success: false,
-            error: 'Please confirm your email before logging in.',
-          };
-        }
-        return {
-          success: false,
-          error: error.message || 'Login failed',
-        };
-      }
-
-      if (!data.user || !data.session) {
-        return {
-          success: false,
-          error: 'Login failed - invalid credentials',
-        };
-      }
-
-      return {
-        success: true,
-        user: data.user,
-        session: data.session,
-      };
-    } catch (err) {
-      return {
-        success: false,
-        error: err instanceof Error ? err.message : 'An unexpected error occurred',
-      };
-    }
-  },
-
-  async sendPasswordReset(email: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email);
-      if (error) {
-        return { success: false, error: error.message || 'Failed to send password reset' };
-      }
-      return { success: true };
-    } catch (err) {
-      return { success: false, error: err instanceof Error ? err.message : 'Unexpected error' };
-    }
-  },
-
-  
-  async logout(): Promise<{ error: AuthError | null }> {
-    try {
-      const { error } = await supabase.auth.signOut();
-
-      if (error) {
-        return {
-          error: {
-            message: error.message || 'Logout failed',
-          },
-        };
-      }
-
-      return { error: null };
-    } catch (err) {
-      return {
-        error: {
-          message: err instanceof Error ? err.message : 'An unexpected error occurred',
+      saveToken(data.token);
+      const session: AuthSession = {
+        access_token: data.token,
+        refresh_token: '',
+        expires_at: 0,
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          phone: data.user.phone,
+          created_at: data.user.created_at,
         },
       };
+      return { success: true, user: data.user, session };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Login failed' };
     }
+  },
+
+  async logout(): Promise<{ error: AuthError | null }> {
+    clearToken();
+    return { error: null };
   },
 
   async getSession(): Promise<AuthSession | null> {
+    const token = getToken();
+    if (!token) return null;
     try {
-      const { data } = await supabase.auth.getSession();
-
-      if (!data.session) return null;
-
+      const data = await api.get('/api/auth/me');
       return {
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-        expires_at: data.session.expires_at || 0,
+        access_token: token,
+        refresh_token: '',
+        expires_at: 0,
         user: {
-          id: data.session.user.id,
-          email: data.session.user.email!,
-          phone: data.session.user.phone,
-          email_confirmed_at: data.session.user.email_confirmed_at,
-          phone_confirmed_at: data.session.user.phone_confirmed_at,
-          created_at: data.session.user.created_at,
+          id: data.user.id,
+          email: data.user.email,
+          phone: data.user.phone,
+          created_at: data.user.created_at,
         },
       };
-    } catch (err) {
-      console.error('Error getting session:', err);
+    } catch {
+      clearToken();
       return null;
     }
   },
 
-
-  
- async getUserProfile(userId: string): Promise<UserProfile | null> {
-      try {
-        const { data, error } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-
-        if (error) {
-          console.error('Error fetching user profile (by id):', error);
-        return null;
-        }
-
-        return data as UserProfile | null;
-      } catch (err) {
-        console.error('Unexpected error fetching user profile:', err);
+  async getUserProfile(_userId: string): Promise<UserProfile | null> {
+    try {
+      const data = await api.get('/api/profile');
+      return data.profile as UserProfile;
+    } catch {
       return null;
     }
   },
-            
 
-  async updateProfile(userId: string, updates: ProfileUpdateData): Promise<{ profile: UserProfile | null; error: AuthError | null }> {
+  async updateProfile(
+    _userId: string,
+    updates: ProfileUpdateData
+  ): Promise<{ profile: UserProfile | null; error: AuthError | null }> {
     try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
-
-      if (error) {
-        return {
-          profile: null,
-          error: {
-            message: error.message || 'Failed to update profile',
-          },
-        };
-      }
-
-      return {
-        profile: data as UserProfile,
-        error: null,
-      };
-    } catch (err) {
-      return {
-        profile: null,
-        error: {
-          message: err instanceof Error ? err.message : 'An unexpected error occurred',
-        },
-      };
+      const data = await api.put('/api/profile', updates);
+      return { profile: data.profile as UserProfile, error: null };
+    } catch (err: any) {
+      return { profile: null, error: { message: err.message || 'Update failed' } };
     }
   },
 
-  async queueProfileUpdate(userId: string, updates: ProfileUpdateData): Promise<boolean> {
+  async queueProfileUpdate(_userId: string, updates: ProfileUpdateData): Promise<boolean> {
     try {
-      const { error } = await supabase.from('profile_update_queue').insert({
-        user_id: userId,
-        updates,
-      });
-
-      return !error;
-    } catch (err) {
-      console.error('Error queuing profile update:', err);
+      const queue = JSON.parse(localStorage.getItem('profile_update_queue') || '[]');
+      queue.push({ updates, timestamp: Date.now() });
+      localStorage.setItem('profile_update_queue', JSON.stringify(queue));
+      return true;
+    } catch {
       return false;
     }
   },
 
-  async uploadAvatar(userId: string, file: File): Promise<{ url: string | null; error: AuthError | null }> {
+  async uploadAvatar(
+    _userId: string,
+    file: File
+  ): Promise<{ url: string | null; error: AuthError | null }> {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${userId}-${Date.now()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
-
-      if (uploadError) {
-        return {
-          url: null,
-          error: {
-            message: uploadError.message || 'Failed to upload avatar',
-          },
-        };
-      }
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-
-      return {
-        url: data.publicUrl,
-        error: null,
-      };
-    } catch (err) {
-      return {
-        url: null,
-        error: {
-          message: err instanceof Error ? err.message : 'An unexpected error occurred',
-        },
-      };
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const data = await api.post('/api/profile/avatar', formData);
+      return { url: data.url, error: null };
+    } catch (err: any) {
+      return { url: null, error: { message: err.message || 'Upload failed' } };
     }
   },
-
-  onAuthStateChange(callback: (session: AuthSession | null) => void) {
-    return supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
-        callback(null);
-        return;
-      }
-
-      callback({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_at: session.expires_at || 0,
-        user: {
-          id: session.user.id,
-          email: session.user.email!,
-          phone: session.user.phone,
-          email_confirmed_at: session.user.email_confirmed_at,
-          phone_confirmed_at: session.user.phone_confirmed_at,
-          created_at: session.user.created_at,
-        },
-      });
-    });
-  },
 };
 
-export const sendPasswordReset = async (email: string) => {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/reset-password`,
-  });
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+export const sendPasswordReset = async (_email: string) => {
+  return { success: false, error: 'Password reset not available yet. Contact admin.' };
 };
 
-export const changePassword = async (newPassword: string) => {
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword,
-  });
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+export const changePassword = async (newPassword: string, oldPassword?: string) => {
+  try {
+    await api.post('/api/auth/change-password', { oldPassword, newPassword });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to change password' };
+  }
 };
 
 export const registerWithPhone = async (phone: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
-    phone,
-    password,
-  });
-  if (error) return { success: false, error: error.message };
-  return { success: true, data };
+  try {
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const data = await api.post('/api/auth/register', {
+      email: cleanPhone + '@phone.local',
+      password,
+      phone_number: phone,
+    });
+    saveToken(data.token);
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Registration failed' };
+  }
 };
 
 export const loginWithPhone = async (phone: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    phone,
-    password,
-  });
-  if (error) {
-    const m = error.message?.toLowerCase?.() || '';
-    if (m.includes('confirm') && m.includes('phone')) {
-      return { success: false, error: 'Please confirm your phone before logging in.' };
-    }
-    return { success: false, error: error.message };
+  try {
+    const data = await api.post('/api/auth/login', { phone, password });
+    saveToken(data.token);
+    return { success: true, data };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Login failed' };
   }
-  return { success: true, data };
 };

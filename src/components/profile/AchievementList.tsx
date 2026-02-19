@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Star, Target, Zap, Award, Lock } from 'lucide-react';
 import { useRewardsStore } from '../../stores/rewardsStore';
 import { useAppStore } from '../../stores/useAppStore';
+import { useTaskStore } from '../../stores/useTaskStore';
 import { useTranslation } from '../../hooks/useTranslation';
 
 interface Achievement {
@@ -17,8 +18,13 @@ interface Achievement {
 
 const AchievementList: React.FC = () => {
   const { t } = useTranslation();
-  const { balance } = useRewardsStore();
+  const { balance, rewardedTaskIds } = useRewardsStore();
   const { stats } = useAppStore();
+  const { tasks } = useTaskStore();
+
+  // Use the greater of rewardedTaskIds (lifetime, persisted) or current completed tasks
+  const currentCompleted = tasks.filter(t => t.completed).length;
+  const lifetimeCompleted = Math.max(rewardedTaskIds.length, currentCompleted);
 
   const achievements: Achievement[] = [
     {
@@ -26,15 +32,15 @@ const AchievementList: React.FC = () => {
       icon: <Star className="h-6 w-6" />,
       title: 'First Steps',
       description: 'Complete your first task',
-      unlocked: stats.completedTasks >= 1,
+      unlocked: lifetimeCompleted >= 1,
     },
     {
       id: 'task-master-10',
       icon: <Target className="h-6 w-6" />,
       title: 'Task Master',
       description: 'Complete 10 tasks',
-      unlocked: stats.completedTasks >= 10,
-      progress: stats.completedTasks,
+      unlocked: lifetimeCompleted >= 10,
+      progress: lifetimeCompleted,
       maxProgress: 10,
     },
     {
@@ -42,8 +48,8 @@ const AchievementList: React.FC = () => {
       icon: <Trophy className="h-6 w-6" />,
       title: 'Task Legend',
       description: 'Complete 50 tasks',
-      unlocked: stats.completedTasks >= 50,
-      progress: Math.min(stats.completedTasks, 50),
+      unlocked: lifetimeCompleted >= 50,
+      progress: Math.min(lifetimeCompleted, 50),
       maxProgress: 50,
     },
     {

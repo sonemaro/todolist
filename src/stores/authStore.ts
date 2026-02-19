@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { supabase } from '../lib/supabaseClient';
 import { AuthSession, UserProfile, RegisterCredentials, LoginCredentials, ProfileUpdateData } from '../types/auth';
 import { authService } from '../services/authService';
 
@@ -29,123 +28,104 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   isAuthenticated: false,
   rememberMe: false,
 
-  
-// snippet: replace the init implementation in authStore with this version
-init: async () => {
-  try {
-    set({ isLoading: true });
+  init: async () => {
+    try {
+      set({ isLoading: true });
 
-    // get current session from Supabase
-    const { data } = await supabase.auth.getSession();
-    const session = data.session as any;
+      // Try to restore session from JWT token in localStorage
+      const session = await authService.getSession();
 
-    // set session initially but don't mark authenticated until we confirm profile
-    set({
-      session: session || null,
-      isAuthenticated: false,
-    });
+      if (!session) {
+        set({ session: null, profile: null, isAuthenticated: false, isLoading: false });
+        return;
+      }
 
-    if (session?.user?.id) {
+      set({ session, isAuthenticated: false });
+
+      // Load user profile
       try {
         const profile = await authService.getUserProfile(session.user.id);
 
         if (profile) {
-          set({
-            profile,
-            isAuthenticated: true,
-            isLoading: false,
-          });
+          set({ profile, isAuthenticated: true, isLoading: false });
         } else {
-          // no profile found -> keep not authenticated
-          set({
-            profile: null,
-            isAuthenticated: false,
-            isLoading: false,
-          });
+          set({ profile: null, isAuthenticated: false, isLoading: false });
         }
       } catch (err) {
         console.error('[authStore] loadProfile error during init:', err);
         set({ isLoading: false, profile: null, isAuthenticated: false });
       }
-    } else {
-      // no session
-      set({ session: null, profile: null, isAuthenticated: false, isLoading: false });
+    } catch (error) {
+      console.error('[authStore] init error:', error);
+      set({ isLoading: false, isAuthenticated: false });
     }
-
-    // subscribe to auth state changes
-    supabase.auth.onAuthStateChange(async (_event, newSession) => {
-      set({
-        session: newSession as any,
-      });
-
-      if (newSession?.user?.id) {
-        const profile = await authService.getUserProfile(newSession.user.id);
-        if (profile) {
-          set({ profile, isAuthenticated: true });
-        } else {
-          set({ profile: null, isAuthenticated: false });
-        }
-      } else {
-        set({ profile: null, isAuthenticated: false });
-      }
-    });
-  } catch (error) {
-    console.error('[authStore] init error:', error);
-    set({ isLoading: false, isAuthenticated: false });
-  }
-},
+  },
 
       register: async (credentials) => {
         set({ isLoading: true });
 
-        const result = await authService.register(credentials);
+        try {
+          const result = await authService.register(credentials);
 
-        if (!result.success) {
+          if (!result.success) {
+            set({ isLoading: false });
+            return {
+              success: false,
+              error: result.error,
+            };
+          }
+
+          if (result.session) {
+            set({
+              session: result.session,
+              isAuthenticated: !!result.session,
+              isLoading: false,
+            });
+
+            await get().loadProfile();
+          } else {
+            set({ isLoading: false });
+          }
+
+          return { success: true, session: result.session };
+        } catch (err: any) {
           set({ isLoading: false });
-          return {
-            success: false,
-            error: result.error,
-          };
+          return { success: false, error: err.message || 'Registration failed' };
         }
-
-        if (result.session) {
-          set({
-            session: result.session,
-            isAuthenticated: !!result.session,
-            isLoading: false,
-          });
-
-          await get().loadProfile();
-        }
-
-        return { success: true };
       },
 
       login: async (credentials) => {
         set({ isLoading: true });
 
-        const result = await authService.login(credentials);
+        try {
+          const result = await authService.login(credentials);
 
-        if (!result.success) {
+          if (!result.success) {
+            set({ isLoading: false });
+            return {
+              success: false,
+              error: result.error,
+            };
+          }
+
+          if (result.session) {
+            set({
+              session: result.session,
+              isAuthenticated: !!result.session,
+              isLoading: false,
+              rememberMe: credentials.remember_me || false,
+            });
+
+            await get().loadProfile();
+          } else {
+            set({ isLoading: false });
+          }
+
+          return { success: true };
+        } catch (err: any) {
           set({ isLoading: false });
-          return {
-            success: false,
-            error: result.error,
-          };
+          return { success: false, error: err.message || 'Login failed' };
         }
-
-        if (result.session) {
-          set({
-            session: result.session,
-            isAuthenticated: !!result.session,
-            isLoading: false,
-            rememberMe: credentials.remember_me || false,
-          });
-
-          await get().loadProfile();
-        }
-
-        return { success: true };
       },
 
       logout: async () => {

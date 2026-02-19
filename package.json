@@ -3,14 +3,21 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "server"
+  ],
   "scripts": {
     "dev": "vite",
+    "dev:server": "yarn workspace todolist-server dev",
+    "dev:all": "yarn docker:up && (yarn dev:server &) && yarn dev",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:reset": "docker compose down -v && docker compose up -d",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.4",
     "@types/node": "^24.3.1",
     "date-fns": "^4.1.0",
     "date-fns-jalali": "^4.1.0-0",

@@ -92,7 +92,23 @@ export const useTaskStore = create<TaskState>()(
       },
 
       deleteTask: (id) => {
+        const task = get().tasks.find(t => t.id === id);
         reminderService.cancelReminder(id);
+
+        // If the task was ever rewarded, deduct the earned points (regardless of current completed status)
+        if (task) {
+          import('../stores/rewardsStore').then(({ useRewardsStore }) => {
+            const rewardsState = useRewardsStore.getState();
+            if (rewardsState.isTaskRewarded(id)) {
+              const pointsEarned = task.priority === 'urgent' ? 20 : task.priority === 'high' ? 15 : task.priority === 'medium' ? 10 : 5;
+              import('../stores/useAppStore').then(({ useAppStore }) => {
+                useAppStore.getState().decrementPoints(pointsEarned);
+              });
+              rewardsState.removeTaskRewarded(id);
+            }
+          });
+        }
+
         set((state) => ({
           tasks: state.tasks.filter(task => task.id !== id),
           categories: state.categories.map(cat => ({
@@ -103,6 +119,22 @@ export const useTaskStore = create<TaskState>()(
       },
 
       toggleTask: (id) => {
+        const task = get().tasks.find(t => t.id === id);
+
+        // If uncompleting a task that was rewarded, deduct points
+        if (task && task.completed) {
+          import('../stores/rewardsStore').then(({ useRewardsStore }) => {
+            const rewardsState = useRewardsStore.getState();
+            if (rewardsState.isTaskRewarded(id)) {
+              const pointsEarned = task.priority === 'urgent' ? 20 : task.priority === 'high' ? 15 : task.priority === 'medium' ? 10 : 5;
+              import('../stores/useAppStore').then(({ useAppStore }) => {
+                useAppStore.getState().decrementPoints(pointsEarned);
+              });
+              rewardsState.removeTaskRewarded(id);
+            }
+          });
+        }
+
         set((state) => ({
           tasks: state.tasks.map(task =>
             task.id === id
@@ -159,6 +191,31 @@ export const useTaskStore = create<TaskState>()(
       setFilter: (filter) => set({ filter }),
 
       clearCompleted: () => {
+        const completedTasks = get().tasks.filter(task => task.completed);
+
+        // Deduct points for all completed+rewarded tasks being cleared
+        if (completedTasks.length > 0) {
+          import('../stores/rewardsStore').then(({ useRewardsStore }) => {
+            import('../stores/useAppStore').then(({ useAppStore }) => {
+              const rewardsState = useRewardsStore.getState();
+              const appStore = useAppStore.getState();
+              let totalPointsToDeduct = 0;
+
+              for (const task of completedTasks) {
+                if (rewardsState.isTaskRewarded(task.id)) {
+                  const pointsEarned = task.priority === 'urgent' ? 20 : task.priority === 'high' ? 15 : task.priority === 'medium' ? 10 : 5;
+                  totalPointsToDeduct += pointsEarned;
+                  rewardsState.removeTaskRewarded(task.id);
+                }
+              }
+
+              if (totalPointsToDeduct > 0) {
+                appStore.decrementPoints(totalPointsToDeduct);
+              }
+            });
+          });
+        }
+
         set((state) => ({
           tasks: state.tasks.filter(task => !task.completed)
         }));

@@ -8,6 +8,7 @@ interface RewardsState {
   offlineQueue: RewardQueueItem[];
   lastDailyBonusClaim: string | null;
   isSyncing: boolean;
+  rewardedTaskIds: string[];
 
   addReward: (reward: Omit<Reward, 'id' | 'createdAt' | 'claimed' | 'synced'>) => void;
   claimReward: (rewardId: string) => Promise<void>;
@@ -19,10 +20,13 @@ interface RewardsState {
   getUnclaimedRewards: () => Reward[];
   getRewardsByType: (type: RewardType) => Reward[];
   canClaimDailyBonus: () => boolean;
-  createTaskCompletionReward: (priority: 'low' | 'medium' | 'high' | 'urgent') => void;
+  createTaskCompletionReward: (priority: 'low' | 'medium' | 'high' | 'urgent', taskId: string) => void;
   createStreakBonusReward: (streakDays: number) => void;
   createLevelUpReward: (level: number) => void;
   clearExpiredRewards: () => void;
+  isTaskRewarded: (taskId: string) => boolean;
+  markTaskRewarded: (taskId: string) => void;
+  removeTaskRewarded: (taskId: string) => void;
 }
 
 const defaultBalance: RewardBalance = {
@@ -40,6 +44,7 @@ export const useRewardsStore = create<RewardsState>()(
       offlineQueue: [],
       lastDailyBonusClaim: null,
       isSyncing: false,
+      rewardedTaskIds: [],
 
       addReward: (rewardData) => {
         const newReward: Reward = {
@@ -189,9 +194,16 @@ export const useRewardsStore = create<RewardsState>()(
         return diffHours >= 24;
       },
 
-      createTaskCompletionReward: (priority) => {
+      createTaskCompletionReward: (priority, taskId) => {
+        // Prevent duplicate rewards for the same task
+        if (get().rewardedTaskIds.includes(taskId)) {
+          return;
+        }
+
         const rules = defaultRewardRules.taskComplete;
         const amount = rules[priority];
+
+        get().markTaskRewarded(taskId);
 
         get().addReward({
           type: 'TaskComplete',
@@ -199,7 +211,7 @@ export const useRewardsStore = create<RewardsState>()(
           description: `Completed a ${priority} priority task`,
           amount,
           currency: 'seeds',
-          metadata: { priority },
+          metadata: { priority, taskId },
         });
       },
 
@@ -250,6 +262,24 @@ export const useRewardsStore = create<RewardsState>()(
           currency: 'coins',
           metadata: { level },
         });
+      },
+
+      isTaskRewarded: (taskId) => {
+        return get().rewardedTaskIds.includes(taskId);
+      },
+
+      markTaskRewarded: (taskId) => {
+        if (!get().rewardedTaskIds.includes(taskId)) {
+          set((state) => ({
+            rewardedTaskIds: [...state.rewardedTaskIds, taskId],
+          }));
+        }
+      },
+
+      removeTaskRewarded: (taskId) => {
+        set((state) => ({
+          rewardedTaskIds: state.rewardedTaskIds.filter((id) => id !== taskId),
+        }));
       },
 
       clearExpiredRewards: () => {
